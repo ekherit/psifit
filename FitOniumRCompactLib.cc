@@ -540,9 +540,10 @@ int GetNumRows(const char *FileName,int npar)
   Double_t Spool;
   ifstream test(FileName,ios::in);//|ios::floatfield);
   if(!test){
-    cout<<"there is no file:"<<FileName<<endl;
+    cout<<"there is no file: "<<FileName<<endl;
     counter=0;
     test.close();
+    exit(1);
   }
   else
   {
@@ -563,7 +564,11 @@ int GetNumRows(const char *FileName,int npar)
 void FillArrayFromFile(const char* FileName,Double_t** Array,int npar,int nps)
 {
   ifstream readingfile(FileName,ios::in);
-  if(!readingfile) cout<<"there is no file:"<<FileName<<endl;
+  if(!readingfile)
+  {
+    cout<<"there is no file:"<<FileName<<endl;
+    exit(1);
+  }
   else
   {
     for(int i=0;i<nps;i++)
@@ -583,7 +588,11 @@ void FillArrayFromFile(const char* FileName,Double_t** Array,int npar,int nparNe
 {
     ifstream readingfile(FileName,ios::in);
     
-     if(!readingfile) cout<<"there is no file:"<<FileName<<endl;
+     if(!readingfile) 
+     {
+       cout<<"there is no file: "<<FileName<<endl;
+       exit(1);
+     }
      else
      {
      for(int i=0;i<nps;i++)

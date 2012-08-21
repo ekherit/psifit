@@ -281,7 +281,7 @@ int main(int argc, char **argv)
   /* ***** Reading data from file ****************** */
   AllMH=new double* [npMHFile];
   std::string data_file_name=opt["scan"].as<std::string>();
-  std::cout << "Reading data from file " << data_file_name;
+  std::cout << "Reading data from file " << data_file_name << ": ";
   npMHFile=GetNumRows(data_file_name.c_str(),dimMHFile);       
   FillArrayFromFile(data_file_name.c_str(),AllMH,dimMHFile,npMHFile);  
   std::cout << "Read " << npMHFile << " points." << std::endl;
