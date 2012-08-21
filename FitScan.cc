@@ -160,6 +160,7 @@ int main(int argc, char **argv)
     ("cross-section-gg", po::value<double>(&CrossGG)->default_value(20), "Gamma-gamma cross section, nb")
     ("dE",po::value<double>(&DEDIFF)->default_value(0.02),"Combine run with energy in dE interval, MeV")
     ("skip",po::value< std::vector<unsigned> >(),"list of skipped points")
+    ("ems-error",po::value< double >(),"ems energy measurement error for each point")
     ;
   po::positional_options_description pos;
   pos.add("scan",-1);
@@ -427,12 +428,41 @@ int main(int argc, char **argv)
   Double_t ECorrGG=0;
   Double_t LG=0,Lee=0,Lgg=0; //integrated luminosity measured different way
   //fill global arrayes which needed to access from the FCN function
+      double DEE[7] = {-2.27063e-04,
+            1.12744e-01   ,
+           -9.56351e-02   ,
+            1.04181e-02   ,
+            1.16408e-01   ,
+           -9.23315e-02   ,
+           -8.21663e-03,
+      };
+      double DEE2[7] = {
+          -2.27063e-04,   
+           1.12744e-01,   
+          -9.56351e-02,   
+           1.04181e-02,   
+           1.16408e-01,   
+          -9.23315e-02,   
+          -8.21663e-03
+      };
+  double ems_error=0;
+  if(opt.count("ems-error")) 
+  {
+    ems_error = opt["ems-error"].as<double>();
+    cout << "Set all ems errors to : " << ems_error << endl;
+  }
+  TRandom random;
   for(int is=0;is<NEp;is++)
   {
-    EInScan[is]=En[is];
-    WInScan[is]=2.*En[is];
-    EErrInScan[is]=Eerr[is];
-    WErrInScan[is]=Eerr[is]*2.;
+    double rn = random.Gaus(0,ems_error);
+    double dE=DEE2[is]+ rn;
+    dE=0;
+    cout << is << " " << dE <<  " " << rn << endl;
+    EInScan[is]=En[is]+dE;
+    WInScan[is]=2.*EInScan[is];
+    if(opt.count("ems-error")) EErrInScan[is]=ems_error;
+    else EErrInScan[is]=Eerr[is];
+    WErrInScan[is]=EErrInScan[is]*2;
     SigmaWInScan[is]=SW[is];
     dSigmaWInScan[is]=dSW[is];
     NmhInScan[is]=Nmh[is];   
@@ -525,7 +555,7 @@ int main(int argc, char **argv)
   arglistRes[0] = 2;
   MinuitRes->mnexcm("SET STRATEGY", arglistRes,1,ierflgRes);
 
-  Double_t vstartRes[5]= {5,0.34,0.2,1.59,LUM_CROSS_SECTION};   
+  Double_t vstartRes[5]= {5,0.34,0.5,1.59,LUM_CROSS_SECTION};   
 
   Double_t stepRes[5] =  {1,0.1,0.01,0.05,0.0};
 
@@ -892,7 +922,7 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
     }
     if( FCNcall ==0 )
     {
-      std::cout << setw(3) << i;
+      std::cout << setw(3) << i+1;
       std::cout << boost::format("%10.3f") % Energy;
       std::cout << setw(10) << NmhInScan[i];
       std::cout << setw(10) << NbbInScan[i];
