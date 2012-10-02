@@ -548,11 +548,14 @@ int GetNumRows(const char *FileName,int npar)
   else
   {
     // counter=0;     
-    while(test.get()!=EOF) // find the end off file  runs.par
+    while(test) // find the end off file  runs.par
     {
       counter++;             // number of lines
       for(int j=0;j<npar;j++)
       {
+        char c = test.get();
+        if(c=='#') test.ignore(65535,'\n');
+        else test.putback(c);
         test>>Spool;
       }
     }
@@ -573,6 +576,9 @@ void FillArrayFromFile(const char* FileName,Double_t** Array,int npar,int nps)
   {
     for(int i=0;i<nps;i++)
     {
+      char c = readingfile.get();
+      if(c=='#') readingfile.ignore(65535,'\n');
+      else readingfile.putback(c);
       Array[i]=new Double_t [npar];
       for(int j=0;j<npar;j++)
       {

@@ -10,7 +10,7 @@ psifit : FitOniumRCompactLib.o psifit.o
 draw : FitOniumRCompactLib.o draw.o 
 		g++ -o $(BINDIR)/draw FitOniumRCompactLib.o  draw.o   $(LIBS)
 
-FitOniumRCompactLib.o : 
+FitOniumRCompactLib.o : FitOniumRCompactLib.cc
 		g++ -o FitOniumRCompactLib.o $(CXXFLAGS) -c FitOniumRCompactLib.cc
 
 psifit.o : FitScan.cc

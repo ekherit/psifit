@@ -30,8 +30,10 @@
 #define _4part 0.25
 #define _6part 0.66666666667
 #define _24part 0.0416666667
-#define _MPsiPrime          3686.090 //PDG-2010
-#define _MJPsi              3096.917
+//#define _MPsiPrime          3686.090 //PDG-2010
+//#define _MJPsi              3096.917
+#define _MPsiPrime          3686.109 //PDG-2012
+#define _MJPsi              3096.916  //PDG-2012
 #define _MTau               1776.69  // KEDR
 #define _GeeJPsi            5.55e-3
 //#define _GeePsiPrime        2.38e-3 //average PDG

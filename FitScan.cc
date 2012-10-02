@@ -107,6 +107,7 @@ bool LUM_COR = true;
 bool FREE_ENERGY_FIT=false;
 unsigned BOTH_FIT=0;
 double DEDIFF=0.02;
+double EMS_SCALE=1;
 
 enum LuminosityType
 {
@@ -161,6 +162,7 @@ int main(int argc, char **argv)
     ("dE",po::value<double>(&DEDIFF)->default_value(0.02),"Combine run with energy in dE interval, MeV")
     ("skip",po::value< std::vector<unsigned> >(),"list of skipped points")
     ("ems-error",po::value< double >(),"ems energy measurement error for each point")
+    ("ems-scale", po::value <double>(&EMS_SCALE)->default_value(1), "Scale ems energy")
     ;
   po::positional_options_description pos;
   pos.add("scan",-1);
@@ -316,7 +318,7 @@ int main(int argc, char **argv)
     AP[Aind]=new double [dimAP];    
     AP[Aind][ARun]=AllMH[i][MHRun];                    
     AP[Aind][AEnergy]=AllMH[i][MHEnergy]*0.5;        
-    AP[Aind][AEnergyErr]=AllMH[i][MHEnergyErr]*0.5;       
+    AP[Aind][AEnergyErr]=AllMH[i][MHEnergyErr]*0.5*EMS_SCALE;       
     AP[Aind][ALe]=AllMH[i][MHLum];//Fill luminocity from bes online lum
     AP[Aind][ALp]=AllMH[i][MHLum];//This is the same for both electron and positron
     AP[Aind][AMHEv]=AllMH[i][MHNmh];
@@ -555,9 +557,9 @@ int main(int argc, char **argv)
   arglistRes[0] = 2;
   MinuitRes->mnexcm("SET STRATEGY", arglistRes,1,ierflgRes);
 
-  Double_t vstartRes[5]= {5,0.34,0.5,1.59,LUM_CROSS_SECTION};   
+  Double_t vstartRes[5]= {0,0.5,0,1.439,LUM_CROSS_SECTION};   
 
-  Double_t stepRes[5] =  {1,0.1,0.01,0.05,0.0};
+  Double_t stepRes[5] =  {1, 0.05,0.05,0.05,0.0};
 
 
 
