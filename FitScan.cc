@@ -125,8 +125,9 @@ double PDGMASS=0;
 
 enum ResonanceType
 {
-  JPSIRES,
-  PSI2SRES
+  AUTORES=0,
+  JPSIRES=1,
+  PSI2SRES=2,
 };
 
 unsigned RESONANCE;
@@ -151,8 +152,8 @@ int main(int argc, char **argv)
     ("help,h","Print this help")
     ("verbose,v","Verbose output")
     ("scan,s",po::value<std::string>()->default_value("scan.txt"),"data file")
-    ("lum,l", po::value<std::string>()->default_value("ee"),"luminosity used: bes, ee (default), gg, eegg, mhee, mhgg, mheegg")
-    ("resonance,R", po::value<unsigned>(&RESONANCE)->default_value(JPSIRES),"resonance: 0 - JPSI, 1 - PSI2S")
+    ("lum,l", po::value<std::string>()->default_value("gg"),"luminosity used: bes, ee, gg (default), eegg, mhee, mhgg, mheegg")
+    ("resonance,R", po::value<unsigned>(&RESONANCE)->default_value(AUTORES),"resonance: 0 - AUTO, 1 - JPSI, 2 - PSI2S")
     ("free-energy,E","allow energy points to be variated")
     ("both", po::value<unsigned>(&BOTH_FIT)->default_value(0),"Fit mode 0,1,2")
     ("lum-cor","Use MC luminosity correction")
@@ -184,19 +185,6 @@ int main(int argc, char **argv)
     std::clog << opt_desc;
     return 0;
   }
-  std::cout << "Fit resonance: ";
-  switch(RESONANCE)
-  {
-    case JPSIRES:
-      PDGMASS=_MJPsi;
-      std::cout << "JPSI";
-      break;
-    case PSI2SRES:
-      PDGMASS=_MPsiPrime;
-      std::cout << "PSI2S";
-      break;
-  }
-  std::cout << std::endl;
 
 
   USE_CHI2 = opt.count("chi2");
@@ -329,6 +317,24 @@ int main(int argc, char **argv)
     AP[Aind][ALumCor]=AllMH[i][MHLumCor];
     Aind++;
   }
+  if(RESONANCE==AUTORES)
+  {
+    if(AP[0][AEnergy] < 1800) RESONANCE = JPSIRES;
+    else RESONANCE=PSI2SRES;
+  }
+  std::cout << "Fit resonance: ";
+  switch(RESONANCE)
+  {
+    case JPSIRES:
+      PDGMASS=_MJPsi;
+      std::cout << "JPSI";
+      break;
+    case PSI2SRES:
+      PDGMASS=_MPsiPrime;
+      std::cout << "PSI2S";
+      break;
+  }
+  std::cout << std::endl;
 
   if(Aind!=npAP) cout<<"PROBLEM !!!!!!!!!"<<endl;
   int   NumParForC[3];  
@@ -559,7 +565,7 @@ int main(int argc, char **argv)
 
   Double_t vstartRes[5]= {0,0.5,0,1.439,LUM_CROSS_SECTION};   
 
-  Double_t stepRes[5] =  {1, 0.05,0.05,0.05,0.0};
+  Double_t stepRes[5] =  {1, 0.1,0.1,0.1,0.0};
 
 
 
