@@ -12,9 +12,14 @@
 #include <unistd.h>
 #include <error.h>
 #include <argp.h>
+#include <regex>
 
 #include <boost/program_options.hpp>
 #include <boost/format.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
+//#include <boost/algorithm/string_regex.hpp>
+#include <boost/algorithm/string/classification.hpp>
 
 #include <TROOT.h>
 #include <TH1.h>
@@ -54,6 +59,7 @@
 #include <TCanvas.h>
 #include <TPostScript.h>
 #include <TApplication.h>
+#include <TRandom.h>
 
 R__EXTERN TSystem *gSystem;
 extern void InitGui();
@@ -108,6 +114,12 @@ bool FREE_ENERGY_FIT=false;
 unsigned BOTH_FIT=0;
 double DEDIFF=0.02;
 double EMS_SCALE=1;
+
+int RANDOM_SEED=0;
+double ENERGY_VARIATION=0;
+std::string OUTPUT_FILE = "fitresult.txt";
+std::vector <double> PAR_INI; //initial parameter value
+std::string PAR_INI_STRING;
 
 enum LuminosityType
 {
@@ -164,6 +176,11 @@ int main(int argc, char **argv)
     ("skip",po::value< std::vector<unsigned> >(),"list of skipped points")
     ("ems-error",po::value< double >(),"ems energy measurement error for each point")
     ("ems-scale", po::value <double>(&EMS_SCALE)->default_value(1), "Scale ems energy")
+    ("variate-energy",po::value<double>(&ENERGY_VARIATION), "Variate point energy")
+    ("seed",po::value<int>(&RANDOM_SEED), "Random seed")
+    ("output,-o", po::value<std::string>(&OUTPUT_FILE), "Output file with fit result")
+    ("exit", "exit after fitting")
+    ("par", po::value<std::string> (&PAR_INI_STRING), "Initial parameter values")
     ;
   po::positional_options_description pos;
   pos.add("scan",-1);
@@ -201,7 +218,8 @@ int main(int argc, char **argv)
   std::cout << "Average cross section: Bhabha: " << CrossBhabha << " nb, Gamma-gamma: " << CrossGG << " nb" << std::endl;
 
 	cout << "Luminosity used: ";
-  std::string lumstr=opt["lum"].as<string>();
+  std::string lumstr="gg";
+  lumstr=opt["lum"].as<string>();
   if(lumstr=="bes")
   {
       LUMINOSITY = BESLUM;
@@ -275,6 +293,30 @@ int main(int argc, char **argv)
   npMHFile=GetNumRows(data_file_name.c_str(),dimMHFile);       
   FillArrayFromFile(data_file_name.c_str(),AllMH,dimMHFile,npMHFile);  
   std::cout << "Read " << npMHFile << " points." << std::endl;
+  if(opt.count("variate-energy"))
+  {
+    cout << "Variate energy in each point on: " << ENERGY_VARIATION << " MeV" << endl;
+    if(RANDOM_SEED==0)
+    {
+      RANDOM_SEED = time(0);
+      cout << "Default random seed (0)  then use current time" << endl;
+    }
+    cout << "Random seed is " << RANDOM_SEED << endl;
+    TRandom r(RANDOM_SEED);
+    cout << setw(5) << "point" << setw(20) << "variation, MeV"  << setw(20) << "new energy, MeV" << endl;
+    for(int i=0;i<npMHFile;i++)
+    {
+      double EV = ENERGY_VARIATION == 0 ? AllMH[i][MHEnergyErr] : ENERGY_VARIATION;
+      double dW = EV*r.Gaus();
+      double W  = AllMH[i][MHEnergy]; 
+      W = W + dW;
+      AllMH[i][MHEnergy] = W;
+      char buf[65535];
+      sprintf(buf, "%5d%20.3f%20.3f", i+1, dW, W);
+      cout << buf << endl;;
+      //cout << setw(5) << i+1 << setw(15) << setprecision(4)<< dW << setw(15) << setprecision(7) <<  W << endl;
+    }
+  }
 
   int dimAP= 19;
   int ARun=0;
@@ -563,7 +605,37 @@ int main(int argc, char **argv)
   arglistRes[0] = 2;
   MinuitRes->mnexcm("SET STRATEGY", arglistRes,1,ierflgRes);
 
-  Double_t vstartRes[5]= {0,0.5,0,1.439,LUM_CROSS_SECTION};   
+  //Double_t vstartRes[5]= {0,0.5,0,1.439,LUM_CROSS_SECTION};   
+  Double_t vstartRes[5]= {0,0.5,0,1.0,LUM_CROSS_SECTION};   
+
+  if(opt.count("par"))
+  {
+    cout << "Set initial parameter values: ";
+    istringstream is(PAR_INI_STRING);
+    PAR_INI.resize(0);
+    while(!is.eof())
+    {
+      double tmp;
+      is >> tmp;
+      PAR_INI.push_back(tmp);
+    }
+    //std::smatch vs;
+    //std::regex_match(PAR_INI_STRING, vs,std::regex("(-|+)?\\d+(,|)?"));
+    //PAR_INI = boost::lexical_cast< std::vector<double> > (PAR_INI_STRING);
+    //std::vector<string> sv;
+    //boost::split(sv,PAR_INI_STRING, boost::is_any_off(", \\t"),boost::token_compress_on);
+    //for(auto x: sv)
+    //{
+    //  cout << x << endl;
+    //}
+    
+    for(int i=0;i<5 && i<PAR_INI.size();i++)
+    {
+      cout << PAR_INI[i] << ", ";
+      vstartRes[i]=PAR_INI[i];
+    }
+    cout << endl;
+  }
 
   Double_t stepRes[5] =  {1, 0.1,0.1,0.1,0.0};
 
@@ -656,6 +728,30 @@ int main(int argc, char **argv)
   parPsiPF[idReff]=parRes[1];
   parPsiPF[idRFreeGee]=0;
   parPsiPF[idRTauEff]=0;
+
+  ofstream output_file(OUTPUT_FILE.c_str(), fstream::app);
+  if(!output_file)
+  {
+    cerr << "Unable to open file " <<OUTPUT_FILE << endl;
+  }
+  else 
+  {
+    cout << "Print fit result to file: " << OUTPUT_FILE << endl;
+    TMinuit * minuit = MinuitRes;
+    char result_string[65535];
+    double chi2= MinChi2/(NpPP-nf);
+    double prob = TMath::Prob(MinChi2,NpPP-nf);
+    sprintf(result_string,"%8.3f %5.3f   %5.3f %5.3f   %5.2f %5.2f  %4.2f  %4.2f  %4.2f  %10.5f",
+        parRes[2]*2,     parErrRes[2]*2,
+        parRes[3],       parErrRes[3],
+        parRes[1]*100,   parErrRes[1]*100,
+        fabs(parRes[0]),       parErrRes[0],
+        chi2,
+        prob
+        );
+    output_file << result_string << endl;
+    output_file.close();
+  }
 
 
   /* 
@@ -808,7 +904,7 @@ int main(int argc, char **argv)
   delete [] Nbb;               
   delete [] Ngg;               
   delete FitRes;
-  theApp->Run();
+  if(!opt.count("exit")) theApp->Run();
   return 0;
 }
 
