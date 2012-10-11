@@ -478,37 +478,15 @@ int main(int argc, char **argv)
   Double_t ECorrGG=0;
   Double_t LG=0,Lee=0,Lgg=0; //integrated luminosity measured different way
   //fill global arrayes which needed to access from the FCN function
-      double DEE[7] = {-2.27063e-04,
-            1.12744e-01   ,
-           -9.56351e-02   ,
-            1.04181e-02   ,
-            1.16408e-01   ,
-           -9.23315e-02   ,
-           -8.21663e-03,
-      };
-      double DEE2[7] = {
-          -2.27063e-04,   
-           1.12744e-01,   
-          -9.56351e-02,   
-           1.04181e-02,   
-           1.16408e-01,   
-          -9.23315e-02,   
-          -8.21663e-03
-      };
   double ems_error=0;
   if(opt.count("ems-error")) 
   {
     ems_error = opt["ems-error"].as<double>();
     cout << "Set all ems errors to : " << ems_error << endl;
   }
-  TRandom random;
   for(int is=0;is<NEp;is++)
   {
-    double rn = random.Gaus(0,ems_error);
-    double dE=DEE2[is]+ rn;
-    dE=0;
-    cout << is << " " << dE <<  " " << rn << endl;
-    EInScan[is]=En[is]+dE;
+    EInScan[is]=En[is];
     WInScan[is]=2.*EInScan[is];
     if(opt.count("ems-error")) EErrInScan[is]=ems_error;
     else EErrInScan[is]=Eerr[is];
@@ -619,15 +597,6 @@ int main(int argc, char **argv)
       is >> tmp;
       PAR_INI.push_back(tmp);
     }
-    //std::smatch vs;
-    //std::regex_match(PAR_INI_STRING, vs,std::regex("(-|+)?\\d+(,|)?"));
-    //PAR_INI = boost::lexical_cast< std::vector<double> > (PAR_INI_STRING);
-    //std::vector<string> sv;
-    //boost::split(sv,PAR_INI_STRING, boost::is_any_off(", \\t"),boost::token_compress_on);
-    //for(auto x: sv)
-    //{
-    //  cout << x << endl;
-    //}
     
     for(int i=0;i<5 && i<PAR_INI.size();i++)
     {
@@ -653,32 +622,11 @@ int main(int argc, char **argv)
     {
       char  NameP[10];
       sprintf(NameP,"dE%d",j);         
-      MinuitRes->DefineParameter(j+4,NameP,0,0.1,-0.5,+0.5);        
+      MinuitRes->DefineParameter(j+4,NameP,0,0.1,-2.0,+2.0);        
     }
   }
 
   int nep = FREE_ENERGY_FIT==false ? 0 : NEp;
-  /* 
-   *  Fit both scan togegher
-   *  This code must be refubrished to use with boost program options.
-  if(arguments.scan==3)
-  {
-    cout << "Fit scan1 and scan2"<< endl;
-    if(BOTH_FIT==1)
-    {
-      MinuitRes->DefineParameter(0+4+nep,"bg2",vstartRes[0],stepRes[0],-150,150.0);
-      MinuitRes->DefineParameter(1+4+nep,"eff2",vstartRes[1],stepRes[1],0.1,1.0);      
-      cout << "Variant with own bg and eff" << endl;
-    }
-    if(BOTH_FIT==2)
-    {
-      MinuitRes->DefineParameter(0+4+nep,"bg2",vstartRes[0],stepRes[0],-150,150.0);
-      MinuitRes->DefineParameter(1+4+nep,"eff2",vstartRes[1],stepRes[1],0.1,1.0);      
-      MinuitRes->DefineParameter(2+4+nep,"SigmaW2",vstartRes[3],stepRes[3],0.5,1.8);      
-      cout << "Variant with own bg, eff and sigmaW" << endl;
-    }
-  }
-  */
 
   MinuitRes->mnexcm("MIGRAD", arglistRes,numpar,ierflgRes);
   MinuitRes->mnimpr();
@@ -688,11 +636,10 @@ int main(int argc, char **argv)
   Double_t aminRes,edmRes,errdefRes;
   Int_t nvparRes,nparxRes,icstatRes;
   Double_t * parRes= new Double_t [numpar] ;
-  Double_t*       parErrRes= new Double_t [numpar] ;    
+  Double_t * parErrRes= new Double_t [numpar] ;    
   for(Int_t i=0;i<numpar;i++)
   {
     MinuitRes->GetParameter(i,parRes[i],parErrRes[i]);
-    //cout << i << " " << parRes[i] << endl;
   }
   Int_t npar=numpar;
   Double_t grad=0;
@@ -822,17 +769,30 @@ int main(int argc, char **argv)
 	dNgr->Fit("pol0", "Q");
 
   GrRes=new TGraphErrors(NEp,WInScan,CrossSInScan,WErrInScan,CrossSErrInScan);
+  GrRes->SetMarkerStyle(20);
+  GrRes->SetMarkerSize(1);
+  GrRes->SetMarkerColor(kBlack);
+  GrRes->SetLineColor(kBlack);
+  GrRes->SetLineWidth(2);
   TF1 * fitfun1=0;
   TF1 * fitfun2=0;
+  double Emin = TMath::MinElement(GrRes->GetN(), GrRes->GetX())-1;
+  double Emax = TMath::MaxElement(GrRes->GetN(), GrRes->GetX())+1;
+  double Erng = TMath::Max(fabs(Emax-PDGMASS), fabs(Emin-PDGMASS));
+  Emin = PDGMASS-Erng;
+  Emax = PDGMASS+Erng;
   switch(RESONANCE)
   {
     case JPSIRES:
-      fitfun1  = new TF1("FitJPsi",FCrSJpsiAzimov,1540*ScaleEGr,1560*ScaleEGr,idRNP);
+      fitfun1  = new TF1("FitJPsi",FCrSJpsiAzimov,Emin/2.*ScaleEGr,Emax/2.*ScaleEGr,idRNP);
+      GrRes->SetTitle("J/#psi scan");
       break;
     case PSI2SRES:
-      fitfun1  = new TF1("FitPsiP",FCrSPPrimeAzimov,1836.*ScaleEGr,1855*ScaleEGr,idRNP);;
+      fitfun1  = new TF1("FitPsiP",FCrSPPrimeAzimov,Emin/2.*ScaleEGr,Emax/2.*ScaleEGr,idRNP);
+      GrRes->SetTitle("#psi(2S) scan");
       break;
   }
+  fitfun1->SetLineColor(kRed);
   TF1* FitPsiP = fitfun1;
   TF1* FitPsiP2=new TF1("FitPsiP2",FCrSPPrimeAzimov,1836.*ScaleEGr,1855*ScaleEGr,idRNP);  
   FitPsiP->SetParameters( parPsiPF);
@@ -842,25 +802,14 @@ int main(int argc, char **argv)
   TestCanv->SetGridy();
   TestCanv->SetFillColor(0);
   TestCanv->SetBorderMode(0);
-  //TestCanv->cd();
-  GrRes->Draw("AP");
+  FitPsiP->Draw();
+  GrRes->Draw("p");
   gPad->SetBorderMode(0);
   GrRes->GetXaxis()->SetTitle("W, MeV");
   GrRes->GetYaxis()->SetTitle("#sigma, nb");
-  double xx=0;
-  switch(RESONANCE)
-  {
-    case JPSIRES:  
-      GrRes->SetTitle("J/#psi scan");
-      xx=1544*ScaleEGr;
-      break;
-    case PSI2SRES: 
-      GrRes->SetTitle("#psi(2S) scan");
-      xx=1838*ScaleEGr;
-      break;
-  };
+  double xx=(Emin+2)/2.*ScaleEGr;
 
-  FitPsiP->Draw("SAME");
+  //FitPsiP->Draw("SAME");
   if(BOTH_FIT==1 || BOTH_FIT==2)
   {
     FitPsiP2->SetLineColor(kBlue);
@@ -873,22 +822,21 @@ int main(int argc, char **argv)
   char Info1[100];
   TLatex*  latexM1=new TLatex();
   latexM1->SetTextSize(0.038);
-  latexM1->SetTextColor(2);       
+  latexM1->SetTextColor(kBlack);       
   sprintf(Info1,"#chi^{2} = %3.3f/ (%d -%d) =%3.3f",MinChi2,NpPP,nf,MinChi2/(NpPP-nf)); 
-  //double yy = parRes[0]*5;
   double yy = FitPsiP->GetMaximum();
   latexM1->DrawLatex(xx,yy,Info1);
   sprintf(Info1,"#Delta M = %3.3f#pm%3.3f MeV",parRes[2]*2.,parErrRes[2]*2.);
   latexM1->DrawLatex(xx,yy*0.8,Info1);
   TLatex * latexSw = new TLatex();
   latexSw->SetTextSize(0.038);
-  latexSw->SetTextColor(2);
+  latexSw->SetTextColor(kBlack);
   sprintf(Info1,"#sigma_{W} = %1.3f #pm %1.3f MeV",parRes[3],parErrRes[3]); 
   latexSw->DrawLatex(xx,yy*0.6,Info1);
 
   TLatex * latexProb = new TLatex();
   latexProb->SetTextSize(0.038);
-  latexProb->SetTextColor(2);
+  latexProb->SetTextColor(kBlack);
   sprintf(Info1,"P(#chi^{2}) = %1.4f",TMath::Prob(MinChi2,NpPP-nf)); 
   latexProb->DrawLatex(xx,yy*0.4,Info1);
 
