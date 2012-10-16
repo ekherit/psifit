@@ -69,10 +69,12 @@ using namespace std;
 
 #include "FitOniumRCompactLib.hh"
 
+#include "utils.h"
+
 #define  NumMaxP 120
 Int_t    NpPP=0;
-Double_t CrossBhabha=265;
-Double_t CrossGG=50;
+Double_t CrossBhabha=0;
+Double_t CrossGG=0;
 Double_t LUM_CROSS_SECTION=0;
 
 Double_t CrossSInScan[NumMaxP];
@@ -103,14 +105,11 @@ Double_t BBLumCorr[NumMaxP];
 Int_t    NumEpoints=0;
 Double_t MinChi2=1e+7;
 void fcnResMult    (Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag);
-void fcnResMult2    (Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag);
-void fcnResMult_both2    (Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag);
-void fcnResMult3    (Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag);
 
+bool USE_CHI2 = true;
 bool USE_CBS_SIGMAW = false; 
-bool USE_CHI2 = false;
 bool LUM_COR = true;
-bool FREE_ENERGY_FIT=false;
+bool FREE_ENERGY_FIT=true;
 unsigned BOTH_FIT=0;
 double DEDIFF=0.02;
 double EMS_SCALE=1;
@@ -150,11 +149,9 @@ double CHI2_LUM;
 double CHI2_ENERGY;
 double CHI2_SIGNAL;
 
+double E_CROSS_NORM; //Beam Energy used for normalization of luminosity calculation
 
-
-
-inline double sq(double x) { return x*x;}
-inline double cb(double x) { return x*x*x;}
+void draw_signal_and_energy_deviation(int NEp, double * parRes);
 
 int main(int argc, char **argv)
 {
@@ -166,12 +163,13 @@ int main(int argc, char **argv)
     ("scan,s",po::value<std::string>()->default_value("scan.txt"),"data file")
     ("lum,l", po::value<std::string>()->default_value("gg"),"luminosity used: bes, ee, gg (default), eegg, mhee, mhgg, mheegg")
     ("resonance,R", po::value<unsigned>(&RESONANCE)->default_value(AUTORES),"resonance: 0 - AUTO, 1 - JPSI, 2 - PSI2S")
-    ("free-energy,E","allow energy points to be variated")
+    ("free-energy,E","allow energy points to be variated (default)")
+    ("nofree-energy","disable energy points to be variated")
     ("both", po::value<unsigned>(&BOTH_FIT)->default_value(0),"Fit mode 0,1,2")
     ("lum-cor","Use MC luminosity correction")
-    ("chi2", "Use chi2 fit")
-    ("cross-section-ee",po::value<double>(&CrossBhabha)->default_value(200), "Bhabha cross section, nb")
-    ("cross-section-gg", po::value<double>(&CrossGG)->default_value(20), "Gamma-gamma cross section, nb")
+    ("nochi2", "Not use chi2")
+    ("cross-section-ee",po::value<double>(&CrossBhabha), "Bhabha cross section, nb")
+    ("cross-section-gg", po::value<double>(&CrossGG), "Gamma-gamma cross section, nb")
     ("dE",po::value<double>(&DEDIFF)->default_value(0.02),"Combine run with energy in dE interval, MeV")
     ("skip",po::value< std::vector<unsigned> >(),"list of skipped points")
     ("ems-error",po::value< double >(),"ems energy measurement error for each point")
@@ -204,65 +202,16 @@ int main(int argc, char **argv)
   }
 
 
-  USE_CHI2 = opt.count("chi2");
-  std::cout << boolalpha;
-
-  std::cout << "Chi2 fit: " << USE_CHI2 << std::endl;
+  if(opt.count("nochi2")) USE_CHI2=false;
+  std::cout << "Chi2 fit: " << boolalpha << USE_CHI2 << std::endl;
 
   LUM_COR = opt.count("lum-cor") && LUMINOSITY==NEELUM;
   std::cout << "Luminosity corrections: " << LUM_COR << std::endl;
 
-  FREE_ENERGY_FIT = opt.count("free-energy");
+  if(opt.count("free-energy")) FREE_ENERGY_FIT=true;
+  if(opt.count("nofree-energy")) FREE_ENERGY_FIT=false;
   std::cout << "Use free energy fit: " << FREE_ENERGY_FIT << std::endl;
 
-  std::cout << "Average cross section: Bhabha: " << CrossBhabha << " nb, Gamma-gamma: " << CrossGG << " nb" << std::endl;
-
-	cout << "Luminosity used: ";
-  std::string lumstr="gg";
-  lumstr=opt["lum"].as<string>();
-  if(lumstr=="bes")
-  {
-      LUMINOSITY = BESLUM;
-      LUM_CROSS_SECTION=CrossBhabha;
-      std::cout << "BES online luminosity monitor"<< std::endl;
-  }
-  if(lumstr=="ee")
-  {
-      LUMINOSITY = NEELUM;
-      LUM_CROSS_SECTION=CrossBhabha;
-      std::cout << "Bhabha"<< std::endl;
-  }
-  if(lumstr=="gg")
-  {
-      LUMINOSITY = NGGLUM;
-      LUM_CROSS_SECTION=CrossGG;
-      std::cout << "gamma-gamma"<< std::endl;
-  }
-  if(lumstr=="eegg")
-  {
-      LUMINOSITY = NEEGGLUM;
-      LUM_CROSS_SECTION=CrossGG+CrossBhabha;
-      std::cout << "Bhabha + gamma-gamma"<< std::endl;
-  }
-  if(lumstr=="mhee")
-  {
-      LUMINOSITY = NMHEELUM;
-      LUM_CROSS_SECTION=CrossBhabha;
-      std::cout << "MH + Bhabha "<< std::endl;
-  }
-  if(lumstr=="mhgg")
-  {
-      LUMINOSITY = NMHGGLUM;
-      LUM_CROSS_SECTION=CrossGG;
-      std::cout << "MH + gamma-gamma "<< std::endl;
-  }
-  if(lumstr=="mheegg")
-  {
-      LUMINOSITY = NMHEEGGLUM;
-      LUM_CROSS_SECTION=CrossGG+CrossBhabha;
-      std::cout << "MH + Bhabha + gamma-gamma "<< std::endl;
-  }
-  cout << "Average cross section of luminosity measurement process: " << LUM_CROSS_SECTION << " nb" << endl;
   TApplication* theApp=0;
   theApp=new  TApplication("App", &argc, argv);
 
@@ -289,10 +238,10 @@ int main(int argc, char **argv)
   /* ***** Reading data from file ****************** */
   AllMH=new double* [npMHFile];
   std::string data_file_name=opt["scan"].as<std::string>();
-  std::cout << "Reading data from file " << data_file_name << ": ";
+  std::cout << "Reading data from file " << data_file_name << "... ";
   npMHFile=GetNumRows(data_file_name.c_str(),dimMHFile);       
   FillArrayFromFile(data_file_name.c_str(),AllMH,dimMHFile,npMHFile);  
-  std::cout << "Read " << npMHFile << " points." << std::endl;
+  std::cout << "read " << npMHFile << " points." << std::endl;
   if(opt.count("variate-energy"))
   {
     cout << "Variate energy in each point on: " << ENERGY_VARIATION << " MeV" << endl;
@@ -476,7 +425,10 @@ int main(int argc, char **argv)
   if(BOTH_FIT==2) numpar+=3;
   Double_t ECorrBB=0;
   Double_t ECorrGG=0;
-  Double_t LG=0,Lee=0,Lgg=0; //integrated luminosity measured different way
+  Double_t LG=0; //Integrated luminosity BES online
+  Double_t Lee=0; //Integrated Bhabha luminosity
+  Double_t Lgg=0; //integrated Gamma Gamma lum
+  Double_t Leegg=0; //integrated BB+GG luminosity
   //fill global arrayes which needed to access from the FCN function
   double ems_error=0;
   if(opt.count("ems-error")) 
@@ -484,6 +436,63 @@ int main(int argc, char **argv)
     ems_error = opt["ems-error"].as<double>();
     cout << "Set all ems errors to : " << ems_error << endl;
   }
+
+  E_CROSS_NORM = PDGMASS/2.;
+
+  if(!opt.count("cross-section-gg")) CrossGG = estimate_cross_section2(E_CROSS_NORM, NEp, En, Le, Ngg);
+  if(!opt.count("cross-section-ee")) CrossBhabha = estimate_cross_section2(E_CROSS_NORM, NEp, En, Le, Nbb);
+  std::vector<double> Neegg(NEp); //sum of Nbb and Ngg
+  for(int i=0;i<NEp;i++) Neegg[i]=Nbb[i]+Ngg[i];
+  double CrossEEGG = estimate_cross_section2(E_CROSS_NORM, NEp, En, Le, &Neegg[0]);
+  cout << "Estimate cross section for luminosity processes: " << endl;
+  cout << setw(25) << "Gamma-gamma cross section"<< setw(20)  <<  CrossGG << " nb. " << endl;
+  cout << setw(25) << "Bhabha cross section" << setw(20) << CrossBhabha << " nb" << endl;
+	cout << "Luminosity used: ";
+  std::string lumstr="gg";
+  lumstr=opt["lum"].as<string>();
+  if(lumstr=="bes")
+  {
+      LUMINOSITY = BESLUM;
+      LUM_CROSS_SECTION=CrossBhabha;
+      std::cout << "BES online luminosity monitor"<< std::endl;
+  }
+  if(lumstr=="ee")
+  {
+      LUMINOSITY = NEELUM;
+      LUM_CROSS_SECTION=CrossBhabha;
+      std::cout << "Bhabha"<< std::endl;
+  }
+  if(lumstr=="gg")
+  {
+      LUMINOSITY = NGGLUM;
+      LUM_CROSS_SECTION=CrossGG;
+      std::cout << "gamma-gamma"<< std::endl;
+  }
+  if(lumstr=="eegg")
+  {
+      LUMINOSITY = NEEGGLUM;
+      LUM_CROSS_SECTION=CrossGG+CrossBhabha;
+      std::cout << "Bhabha + gamma-gamma"<< std::endl;
+  }
+  if(lumstr=="mhee")
+  {
+      LUMINOSITY = NMHEELUM;
+      LUM_CROSS_SECTION=CrossBhabha;
+      std::cout << "MH + Bhabha "<< std::endl;
+  }
+  if(lumstr=="mhgg")
+  {
+      LUMINOSITY = NMHGGLUM;
+      LUM_CROSS_SECTION=CrossGG;
+      std::cout << "MH + gamma-gamma "<< std::endl;
+  }
+  if(lumstr=="mheegg")
+  {
+      LUMINOSITY = NMHEEGGLUM;
+      LUM_CROSS_SECTION=CrossGG+CrossBhabha;
+      std::cout << "MH + Bhabha + gamma-gamma "<< std::endl;
+  }
+  cout << "Average cross section of luminosity measurement process: " << LUM_CROSS_SECTION << " nb" << endl;
   for(int is=0;is<NEp;is++)
   {
     EInScan[is]=En[is];
@@ -496,14 +505,18 @@ int main(int argc, char **argv)
     NmhInScan[is]=Nmh[is];   
     NbbInScan[is]=Nbb[is];       
     NggInScan[is]=Ngg[is];       
-    ECorrBB=1./CrossSBhabhaPP(En[is],&CrossBhabha);
-    ECorrGG=1./CrossSBhabhaPP(En[is],&CrossGG);
-    LumInScanEE[is]=NbbInScan[is]*ECorrBB;
-    LumInScanGG[is]=NggInScan[is]*ECorrGG;
-    LumInScanEEGG[is]=(NggInScan[is] + NbbInScan[is])/(1./ECorrBB + 1./ECorrGG);
+    //ECorrBB=1./CrossSBhabhaPP(En[is],&CrossBhabha);
+    //ECorrGG=1./CrossSBhabhaPP(En[is],&CrossGG);
+    //LumInScanEE[is]=NbbInScan[is]*ECorrBB;
+    //LumInScanGG[is]=NggInScan[is]*ECorrGG;
+    //LumInScanEEGG[is]=(NggInScan[is] + NbbInScan[is])/(1./ECorrBB + 1./ECorrGG);
+    LumInScanEE[is]=NbbInScan[is]*sq(En[is]/E_CROSS_NORM)/CrossBhabha;
+    LumInScanGG[is]=NggInScan[is]*sq(En[is]/E_CROSS_NORM)/CrossGG;
+    LumInScanEEGG[is]=(NggInScan[is] + NbbInScan[is])*sq(En[is]/E_CROSS_NORM)/CrossEEGG;
     LG+=TMath::Max(Le[is],Lp[is]);
     Lee+= LumInScanEE[is];
     Lgg+= LumInScanGG[is];
+    Leegg+=LumInScanEEGG[is];
     LumLgammaInScan[is]=TMath::Max(Le[is],Lp[is]); //BES lum
 		BBLumCorr[is] = Lcor[is];
     switch(LUMINOSITY)
@@ -550,7 +563,7 @@ int main(int argc, char **argv)
     if(Ngg[is]>4) CrossSGGErrInScan[is]=sqrt(Ngg[is])/LumInScan[is];        
     else CrossSGGErrInScan[is]=sqrt(Ngg[is]+4)/LumInScan[is];         
   }
-  std::cout << "Total luminosity: Lbes=" << LG << "/nb, Lee=" << Lee << "/nb, Lgg="<<Lgg<<"/nb"<<std::endl;
+  std::cout << "Total luminosity: Lbes=" << LG << "/nb, Lee=" << Lee << "/nb, Lgg="<<Lgg<<"/nb, Leegg="<< Leegg << "/nb" <<std::endl;
   if(opt.count("verbose"))
   {
     for(int is=0;is<NEp;is++)
@@ -700,73 +713,8 @@ int main(int argc, char **argv)
     output_file.close();
   }
 
+  draw_signal_and_energy_deviation(NEp,parRes);
 
-  /* 
-   *  Fit both scan togegher
-   *  This code must be refubrished to use with boost program options.
-  if(arguments.scan==3)
-  {
-    int nep = FREE_ENERGY_FIT ? NEp : 0;
-    if(BOTH_FIT==1)
-    {
-      parPsiPF2[idRbg]=parRes[0+4+nep];
-      parPsiPF2[idReff]=parRes[1+4+nep];
-      parPsiPF2[idRM]=parRes[2];
-      parPsiPF2[idRSw]=parRes[3];   
-      parPsiPF2[idRFreeGee]=0;
-      parPsiPF2[idRTauEff]=0;
-      for(unsigned i=0; i<idRNP;i++)
-      {
-        cout << i << " " << parPsiPF2[i] << endl;
-      }
-    }
-    if(BOTH_FIT==2)
-    {
-      parPsiPF2[idRbg]=parRes[0+4+nep];
-      parPsiPF2[idReff]=parRes[1+4+nep];
-      parPsiPF2[idRM]=parRes[2];
-      parPsiPF2[idRSw]=parRes[2+4+nep];   
-      parPsiPF2[idRFreeGee]=0;
-      parPsiPF2[idRTauEff]=0;
-      for(unsigned i=0; i<idRNP;i++)
-      {
-        cout << i << " " << parPsiPF2[i] << endl;
-      }
-    }
-  }
-  */
-
-
-  double EnergyChi2=0;
-	TGraphErrors * dEgr = new TGraphErrors;//energy deviation graph
-	TGraphErrors * dNgr = new TGraphErrors;//signal discrepancy graph
-	gStyle->SetOptFit(kTRUE);
-  for(int is=0;is<NEp;is++)
-  {       
-    WErrInScan[is]=WErrInScan[is];
-    //if(arguments.FreeEnergy==1) WInScan[is]+=2.*+parRes[is+4];
-    EnergyChi2+= sq(parRes[is+4]/EErrInScan[is]);
-		dEgr->SetPoint(is, WInScan[is], parRes[is+4]*2);
-		dEgr->SetPointError(is, 0,  WErrInScan[is]);
-		dNgr->SetPoint(is, WInScan[is], SignalDiscrepancy[is]);
-		dNgr->SetPointError(is, WErrInScan[is], SignalDiscrepancyError[is]);
-  }
-	TCanvas * dEc = new TCanvas("dEc", "Energy deviation");
-	dEgr->SetMarkerStyle(21);
-	dEgr->SetLineWidth(2);
-	dEgr->SetMarkerSize(1);
-	dEgr->Draw("ap");
-	dEgr->GetXaxis()->SetTitle("W, MeV");
-	dEgr->GetYaxis()->SetTitle("W_{exp}-W_{CBS}, MeV");
-	dEgr->Fit("pol0", "Q");
-	TCanvas * dNc = new TCanvas("dNc", "Number of visible events of signal deviation");
-	dNgr->SetMarkerStyle(21);
-	dNgr->SetLineWidth(2);
-	dNgr->SetMarkerSize(1);
-	dNgr->Draw("ap");
-	dNgr->GetXaxis()->SetTitle("W, MeV");
-	dNgr->GetYaxis()->SetTitle("N_{vis} - N_{exp}");
-	dNgr->Fit("pol0", "Q");
 
   GrRes=new TGraphErrors(NEp,WInScan,CrossSInScan,WErrInScan,CrossSErrInScan);
   GrRes->SetMarkerStyle(20);
@@ -781,63 +729,65 @@ int main(int argc, char **argv)
   double Erng = TMath::Max(fabs(Emax-PDGMASS), fabs(Emin-PDGMASS));
   Emin = PDGMASS-Erng;
   Emax = PDGMASS+Erng;
-  switch(RESONANCE)
-  {
-    case JPSIRES:
-      fitfun1  = new TF1("FitJPsi",FCrSJpsiAzimov,Emin/2.*ScaleEGr,Emax/2.*ScaleEGr,idRNP);
-      GrRes->SetTitle("J/#psi scan");
-      break;
-    case PSI2SRES:
-      fitfun1  = new TF1("FitPsiP",FCrSPPrimeAzimov,Emin/2.*ScaleEGr,Emax/2.*ScaleEGr,idRNP);
-      GrRes->SetTitle("#psi(2S) scan");
-      break;
-  }
-  fitfun1->SetLineColor(kRed);
-  TF1* FitPsiP = fitfun1;
-  TF1* FitPsiP2=new TF1("FitPsiP2",FCrSPPrimeAzimov,1836.*ScaleEGr,1855*ScaleEGr,idRNP);  
-  FitPsiP->SetParameters( parPsiPF);
-  FitPsiP2->SetParameters( parPsiPF2);
   TCanvas* TestCanv=new TCanvas("BES_PSIP_SCAN","BES PsiP Scan",900,700); 
   TestCanv->SetGridx();
   TestCanv->SetGridy();
   TestCanv->SetFillColor(0);
   TestCanv->SetBorderMode(0);
+  switch(RESONANCE)
+  {
+    case JPSIRES:
+      fitfun1  = new TF1("FitJPsi",FCrSJpsiAzimov,Emin/2.*ScaleEGr,Emax/2.*ScaleEGr,idRNP);
+      fitfun1->SetTitle("J/#psi");
+      GrRes->SetTitle("J/#psi scan");
+      TestCanv->SetTitle("J/psi");
+      break;
+    case PSI2SRES:
+      fitfun1  = new TF1("FitPsiP",FCrSPPrimeAzimov,Emin/2.*ScaleEGr,Emax/2.*ScaleEGr,idRNP);
+      fitfun1->SetTitle("#psi(2S)");
+      GrRes->SetTitle("#psi(2S) scan");
+      TestCanv->SetTitle("psi(2S)");
+      break;
+  }
+  fitfun1->SetLineColor(kRed);
+  TF1* FitPsiP = fitfun1;
+  FitPsiP->SetParameters( parPsiPF);
   FitPsiP->Draw();
+  FitPsiP->GetXaxis()->SetTitle("W, MeV");
+  FitPsiP->GetYaxis()->SetTitle("#sigma_{obs}, nb");
   GrRes->Draw("p");
   gPad->SetBorderMode(0);
   GrRes->GetXaxis()->SetTitle("W, MeV");
   GrRes->GetYaxis()->SetTitle("#sigma, nb");
-  double xx=(Emin+2)/2.*ScaleEGr;
 
-  //FitPsiP->Draw("SAME");
-  if(BOTH_FIT==1 || BOTH_FIT==2)
-  {
-    FitPsiP2->SetLineColor(kBlue);
-    FitPsiP2->Draw("SAME");
-    TLegend * l= new TLegend(0.8,0.9,1.0,1.0);
-    l->AddEntry(FitPsiP,"First scan", "l");
-    l->AddEntry(FitPsiP2,"Second scan", "l");
-    l->Draw();
-  }
+  //calculate positions
+  double xx=(Emin+2)/2.*ScaleEGr;
+  double yy = FitPsiP->GetMaximum()*0.9;
+
   char Info1[100];
+  //Show chi2 / ndf
   TLatex*  latexM1=new TLatex();
   latexM1->SetTextSize(0.038);
   latexM1->SetTextColor(kBlack);       
-  sprintf(Info1,"#chi^{2} = %3.3f/ (%d -%d) =%3.3f",MinChi2,NpPP,nf,MinChi2/(NpPP-nf)); 
-  double yy = FitPsiP->GetMaximum();
+  sprintf(Info1,"#chi^{2}/ndf = %3.2f / (%d -%d) =%4.2f",MinChi2,NpPP,nf,MinChi2/(NpPP-nf)); 
   latexM1->DrawLatex(xx,yy,Info1);
-  sprintf(Info1,"#Delta M = %3.3f#pm%3.3f MeV",parRes[2]*2.,parErrRes[2]*2.);
+
+  //Show mass shift
+  sprintf(Info1,"M - M_{PDG} = %3.3f #pm %3.3f MeV",parRes[2]*2.,parErrRes[2]*2.);
   latexM1->DrawLatex(xx,yy*0.8,Info1);
+
+  //Show energy spread
   TLatex * latexSw = new TLatex();
   latexSw->SetTextSize(0.038);
   latexSw->SetTextColor(kBlack);
   sprintf(Info1,"#sigma_{W} = %1.3f #pm %1.3f MeV",parRes[3],parErrRes[3]); 
   latexSw->DrawLatex(xx,yy*0.6,Info1);
 
+  //Show probability
   TLatex * latexProb = new TLatex();
   latexProb->SetTextSize(0.038);
   latexProb->SetTextColor(kBlack);
-  sprintf(Info1,"P(#chi^{2}) = %1.4f",TMath::Prob(MinChi2,NpPP-nf)); 
+  sprintf(Info1,"P(#chi^{2}) = %3.1f%%",TMath::Prob(MinChi2,NpPP-nf)*100); 
   latexProb->DrawLatex(xx,yy*0.4,Info1);
 
   TestCanv->Update();
@@ -900,12 +850,12 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
   {
     std::cout << std::setw(3)  << "#pn";
     std::cout << std::setw(10) << "E, MeV";
-    std::cout << std::setw(10)  << "Nmh";
-    std::cout << std::setw(10)  << "Nlum";
-    std::cout << std::setw(10) << "sigBB,nb";
+    std::cout << std::setw(10) << "L,1/nb";
+    std::cout << std::setw(10) << "Nmh";
     std::cout << std::setw(10) << "sigMH,nb";
     std::cout << std::setw(10) << "Lmh,1/nb";
-    std::cout << std::setw(10) << "Lbb,1/nb";
+    std::cout << std::setw(10) << "Nlum";
+    std::cout << std::setw(10) << "sigLum,nb";
     std::cout << std::setw(10) << "L,1/nb";
     for(unsigned i=0;i<4;++i) std::cout << setw(7) << "p"+std::string(boost::lexical_cast<std::string>(i));
     std::cout << std::endl;
@@ -938,8 +888,10 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
         sigmaMH=CrSOniumR(_MethodAzimov,_IdPsiPrime,Energy,parmh);
         break;
     };
-    sigmaBB=CrossSBhabhaPP(Energy,&CrossBhabha);                        
-    sigmaGG=CrossSBhabhaPP(Energy,&CrossGG);                        
+    //sigmaBB=CrossSBhabhaPP(Energy,&CrossBhabha);                        
+    //sigmaGG=CrossSBhabhaPP(Energy,&CrossGG);                        
+    sigmaBB = CrossBhabha * sq(E_CROSS_NORM/Energy);                     
+    sigmaGG = CrossGG * sq(E_CROSS_NORM/Energy);                     
     switch(LUMINOSITY)
     {
       case NMHEELUM:
@@ -976,13 +928,13 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
     {
       std::cout << setw(3) << i+1;
       std::cout << boost::format("%10.3f") % Energy;
+      std::cout << boost::format("%10.3f") % lumFull;
       std::cout << setw(10) << NmhInScan[i];
-      std::cout << setw(10) << NbbInScan[i];
-      std::cout << boost::format("%10.3f") % sigmaBB;
       std::cout << boost::format("%10.3f") % sigmaMH;
       std::cout << boost::format("%10.3f") % (NmhInScan[i]/sigmaMH);
-      std::cout << boost::format("%10.3f") % (NbbInScan[i]/sigmaBB);
-      std::cout << boost::format("%10.3f") % lumFull;
+      std::cout << setw(10) << NLum[i];
+      std::cout << boost::format("%10.3f") % (NLum[i]/LumInScan[i]);
+      std::cout << boost::format("%10.3f") % LumInScan[i];
       for(unsigned i=0;i<4;++i) std::cout << boost::format("%7.2f") % parmh[i];
       std::cout << std::endl;
       NpPP++;
@@ -1042,4 +994,42 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
     CHI2_SIGNAL = SignalChi2;
   }
   FCNcall=1;
+}
+
+
+void draw_signal_and_energy_deviation(int NEp, double * parRes)
+{
+  double EnergyChi2=0;
+	TGraphErrors * dEgr = new TGraphErrors;//energy deviation graph
+	TGraphErrors * dNgr = new TGraphErrors;//signal discrepancy graph
+	gStyle->SetOptFit(kTRUE);
+  for(int is=0;is<NEp;is++)
+  {       
+    WErrInScan[is]=WErrInScan[is];
+    //if(arguments.FreeEnergy==1) WInScan[is]+=2.*+parRes[is+4];
+    EnergyChi2+= sq(parRes[is+4]/EErrInScan[is]);
+		dEgr->SetPoint(is, WInScan[is], parRes[is+4]*2);
+		dEgr->SetPointError(is, 0,  WErrInScan[is]);
+		dNgr->SetPoint(is, WInScan[is], SignalDiscrepancy[is]);
+		dNgr->SetPointError(is, WErrInScan[is], SignalDiscrepancyError[is]);
+  }
+
+  cout << "Draw energy deviation" << endl;
+	TCanvas * dEc = new TCanvas("dEc", "Energy deviation");
+	dEgr->SetMarkerStyle(21);
+	dEgr->SetLineWidth(2);
+	dEgr->SetMarkerSize(1);
+	dEgr->Draw("ap");
+	dEgr->GetXaxis()->SetTitle("W, MeV");
+	dEgr->GetYaxis()->SetTitle("W_{exp}-W_{CBS}, MeV");
+	dEgr->Fit("pol0", "Q");
+  cout << "Draw signal deviation" << endl;
+	TCanvas * dNc = new TCanvas("dNc", "Number of visible events of signal deviation");
+	dNgr->SetMarkerStyle(21);
+	dNgr->SetLineWidth(2);
+	dNgr->SetMarkerSize(1);
+	dNgr->Draw("ap");
+	dNgr->GetXaxis()->SetTitle("W, MeV");
+	dNgr->GetYaxis()->SetTitle("N_{vis} - N_{exp}");
+	dNgr->Fit("pol0", "Q");
 }
