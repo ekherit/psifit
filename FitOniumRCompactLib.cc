@@ -585,7 +585,6 @@ void FillArrayFromFile(const char* FileName,Double_t** Array,int npar,int nps)
         readingfile>>Array[i][j];
       }
     }
-    cout<<endl;
   }
   readingfile.close();
 }
