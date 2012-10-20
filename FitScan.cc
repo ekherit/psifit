@@ -105,6 +105,7 @@ Double_t BBLumCorr[NumMaxP];
 Int_t    NumEpoints=0;
 Double_t MinChi2=1e+7;
 void fcnResMult    (Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag);
+void print_result(std::ostream & os, TMinuit * minuit, std::string sharp="#");
 
 bool USE_CHI2 = true;
 bool USE_CBS_SIGMAW = false; 
@@ -116,7 +117,9 @@ double EMS_SCALE=1;
 
 int RANDOM_SEED=0;
 double ENERGY_VARIATION=0;
-std::string OUTPUT_FILE = "fitresult.txt";
+std::string INPUT_FILE = "scan.txt";
+std::string OUTPUT_FILE = "fitscan.txt";
+std::string RESULT_FILE = "result.txt";
 std::vector <double> PAR_INI; //initial parameter value
 std::string PAR_INI_STRING;
 
@@ -160,7 +163,7 @@ int main(int argc, char **argv)
   opt_desc.add_options()
     ("help,h","Print this help")
     ("verbose,v","Verbose output")
-    ("scan,s",po::value<std::string>()->default_value("scan.txt"),"data file")
+    ("input",po::value<std::string>(&INPUT_FILE)->default_value("scan.txt"),"data file")
     ("lum,l", po::value<std::string>()->default_value("gg"),"luminosity used: bes, ee, gg (default), eegg, mhee, mhgg, mheegg")
     ("resonance,R", po::value<unsigned>(&RESONANCE)->default_value(AUTORES),"resonance: 0 - AUTO, 1 - JPSI, 2 - PSI2S")
     ("free-energy,E","allow energy points to be variated (default)")
@@ -176,12 +179,13 @@ int main(int argc, char **argv)
     ("ems-scale", po::value <double>(&EMS_SCALE)->default_value(1), "Scale ems energy")
     ("variate-energy",po::value<double>(&ENERGY_VARIATION), "Variate point energy")
     ("seed",po::value<int>(&RANDOM_SEED), "Random seed")
-    ("output,-o", po::value<std::string>(&OUTPUT_FILE), "Output file with fit result")
+    ("output,-o", po::value<std::string>(&OUTPUT_FILE), "Output file with the result")
+    ("result,-r", po::value<std::string>(&RESULT_FILE), "Result of the fit accumulated in this file")
     ("exit", "exit after fitting")
     ("par", po::value<std::string> (&PAR_INI_STRING), "Initial parameter values")
     ;
   po::positional_options_description pos;
-  pos.add("scan",-1);
+  pos.add("input",-1);
   po::variables_map opt; //options container
   try
   {
@@ -667,19 +671,29 @@ int main(int argc, char **argv)
   int nf=MinuitRes->GetNumFreePars();
   if(FREE_ENERGY_FIT) nf-=NEp;
 
-  cout.precision(15);
-  cout<<"Minuit Mass= "<<PDGMASS+parRes[2]*2.<<endl;
-  cout<<"PDG Mass= "<<PDGMASS<<endl;
-  cout.precision(4);
-  cout<<"M-Mpdg="<<parRes[2]*2.<< " +- " << parErrRes[2]*2. <<  " MeV." << endl;
-  cout<< "chi2/ndf = " <<MinChi2 << "/(" << NpPP<<"-"<<nf<<") = "  << MinChi2/(NpPP-nf) << ", P(chi2)=" << TMath::Prob(MinChi2,NpPP-nf) << endl;
-  cout.precision(15);
-  cout << "Contribution to chi square:" << endl;
-  cout.precision(4);
-  cout << "chi2 signal: " << CHI2_SIGNAL <<  " or " << CHI2_SIGNAL/CHI2_TOTAL*100 << "%" << endl;
-  cout << "chi2 energy: " << CHI2_ENERGY <<  " or " << CHI2_ENERGY/CHI2_TOTAL*100 << "%" <<  endl;
-  cout << "chi2 lum: "    << CHI2_LUM    <<  " or " << CHI2_LUM/CHI2_TOTAL*100 << "%" << endl;
-  cout << "Total chi2: " << CHI2_TOTAL << endl;
+  //cout.precision(15);
+  //cout<<"Minuit Mass= "<<PDGMASS+parRes[2]*2.<<endl;
+  //cout<<"PDG Mass= "<<PDGMASS<<endl;
+  //cout.precision(4);
+  //cout<<"M-Mpdg="<<parRes[2]*2.<< " +- " << parErrRes[2]*2. <<  " MeV." << endl;
+  //cout<< "chi2/ndf = " <<MinChi2 << "/(" << NpPP<<"-"<<nf<<") = "  << MinChi2/(NpPP-nf) << ", P(chi2)=" << TMath::Prob(MinChi2,NpPP-nf) << endl;
+  //cout.precision(15);
+  //cout << "Contribution to chi square:" << endl;
+  //cout.precision(4);
+  //cout << "chi2 signal: " << CHI2_SIGNAL <<  " or " << CHI2_SIGNAL/CHI2_TOTAL*100 << "%" << endl;
+  //cout << "chi2 energy: " << CHI2_ENERGY <<  " or " << CHI2_ENERGY/CHI2_TOTAL*100 << "%" <<  endl;
+  //cout << "chi2 lum: "    << CHI2_LUM    <<  " or " << CHI2_LUM/CHI2_TOTAL*100 << "%" << endl;
+  //cout << "Total chi2: " << CHI2_TOTAL << endl;
+  
+
+  print_result(std::cout, MinuitRes,"#");
+  //copy input file
+  std::ifstream input_file(INPUT_FILE, std::ios::binary);
+  std::ofstream output_file(OUTPUT_FILE, std::ios::binary);
+  output_file << input_file.rdbuf();
+  print_result(output_file, MinuitRes,"#");
+
+  //print result to input file
   Double_t* parPsiPF    = new Double_t [idRNP];
   Double_t* parPsiPF2    = new Double_t [idRNP];
   parPsiPF[idRbg]=parRes[0];
@@ -689,14 +703,14 @@ int main(int argc, char **argv)
   parPsiPF[idRFreeGee]=0;
   parPsiPF[idRTauEff]=0;
 
-  ofstream output_file(OUTPUT_FILE.c_str(), fstream::app);
-  if(!output_file)
+  ofstream result_file(RESULT_FILE.c_str(), fstream::app);
+  if(!result_file)
   {
-    cerr << "Unable to open file " <<OUTPUT_FILE << endl;
+    cerr << "Unable to open file " <<RESULT_FILE << endl;
   }
   else 
   {
-    cout << "Print fit result to file: " << OUTPUT_FILE << endl;
+    cout << "Print fit result to file: " << RESULT_FILE << endl;
     TMinuit * minuit = MinuitRes;
     char result_string[65535];
     double chi2= MinChi2/(NpPP-nf);
@@ -709,8 +723,8 @@ int main(int argc, char **argv)
         chi2,
         prob
         );
-    output_file << result_string << endl;
-    output_file.close();
+    result_file << result_string << endl;
+    result_file.close();
   }
 
   draw_signal_and_energy_deviation(NEp,parRes);
@@ -791,6 +805,13 @@ int main(int argc, char **argv)
   latexProb->DrawLatex(xx,yy*0.4,Info1);
 
   TestCanv->Update();
+  char pdf_file[1024];
+  char root_file[1024];
+  sprintf(pdf_file, "%s.pdf", OUTPUT_FILE.c_str());
+  sprintf(root_file, "%s.root", OUTPUT_FILE.c_str());
+  gPad->SaveAs(pdf_file);
+  gPad->SaveAs(root_file);
+  
   delete [] En_;   
   delete [] Eerr_;
   delete [] Nmh_;
@@ -1015,7 +1036,7 @@ void draw_signal_and_energy_deviation(int NEp, double * parRes)
   }
 
   cout << "Draw energy deviation" << endl;
-	TCanvas * dEc = new TCanvas("dEc", "Energy deviation");
+	TCanvas * dEc = new TCanvas("dEc", "Energy deviation", 640,480);
 	dEgr->SetMarkerStyle(21);
 	dEgr->SetLineWidth(2);
 	dEgr->SetMarkerSize(1);
@@ -1024,7 +1045,7 @@ void draw_signal_and_energy_deviation(int NEp, double * parRes)
 	dEgr->GetYaxis()->SetTitle("W_{exp}-W_{CBS}, MeV");
 	dEgr->Fit("pol0", "Q");
   cout << "Draw signal deviation" << endl;
-	TCanvas * dNc = new TCanvas("dNc", "Number of visible events of signal deviation");
+	TCanvas * dNc = new TCanvas("dNc", "Number of visible events of signal deviation",640,480);
 	dNgr->SetMarkerStyle(21);
 	dNgr->SetLineWidth(2);
 	dNgr->SetMarkerSize(1);
@@ -1032,4 +1053,41 @@ void draw_signal_and_energy_deviation(int NEp, double * parRes)
 	dNgr->GetXaxis()->SetTitle("W, MeV");
 	dNgr->GetYaxis()->SetTitle("N_{vis} - N_{exp}");
 	dNgr->Fit("pol0", "Q");
+}
+
+
+
+void print_result(std::ostream & os, TMinuit * minuit, string sharp)
+{
+  size_t N=minuit->GetNumPars();
+  std::vector<double> P(N); //paramers
+  std::vector<double> dP(N); //paramers errors
+  for(int i=0;i<N;i++)
+  {
+    minuit->GetParameter(i, P[i], dP[i]);
+  }
+  //double grad=0;
+  //double fval=0;
+  //int flag=1;
+  //minuit->Eval(N, &grad, fval, &P[0], flag);
+  int nf = minuit->GetNumFreePars();
+  if(FREE_ENERGY_FIT) nf-=NumEpoints;
+  int ndf = (NpPP-nf);
+  double chi2= MinChi2/ndf;
+  double prob = TMath::Prob(MinChi2,NpPP-nf);
+  typedef boost::format bf;
+  os << sharp << " Contribution to chi square:" << endl;
+  os << sharp << "   chi2 signal: " << CHI2_SIGNAL <<  " or " << CHI2_SIGNAL/CHI2_TOTAL*100 << "%" << endl;
+  os << sharp << "   chi2 energy: " << CHI2_ENERGY <<  " or " << CHI2_ENERGY/CHI2_TOTAL*100 << "%" <<  endl;
+  os << sharp << "      chi2 lum: " << CHI2_LUM    <<  " or " << CHI2_LUM/CHI2_TOTAL*100 << "%" << endl;
+  os << sharp << "    Total chi2: " << CHI2_TOTAL   << endl;
+  os << sharp << " ndf    = " << ndf  << endl;
+  os << sharp << " chi2/ndf = " <<MinChi2 << "/(" << NpPP<<"-"<<nf<<") = "  << chi2 <<  endl;
+  os << sharp << " P(chi2) =" << TMath::Prob(MinChi2,NpPP-nf) << endl;
+  os << sharp << " Minuit Mass = "<< bf("%8.3f") % (PDGMASS+P[2]*2.)<<endl;
+  os << sharp << " PDG Mass = "   << bf("%8.3f") % PDGMASS <<  endl;
+  os << sharp << " " << bf("M-Mpdg = %8.3f +- %5.3f MeV") % (P[2]*2.) %  (dP[2]*2.) << endl;
+  os << sharp << " " << bf("    SW = %5.3f +- %5.3f MeV") % P[3] %  dP[3] << endl;
+  os << sharp << " " << bf("   eps = %5.2f +- %4.2f %%") % (P[1]*100) %  (dP[1]*100) << endl;
+  os << sharp << " " << bf("    bg = %5.2f +- %5.2f nb") % P[0] %  dP[0] << endl;
 }
