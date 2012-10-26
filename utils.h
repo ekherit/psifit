@@ -50,6 +50,26 @@ inline double estimate_cross_section2
   return IN/IL;
 }
 
+/* Keep total luminosity constant */
+inline double estimate_cross_section2 
+  (
+    double E0 /* normalization energy */,
+    const std::vector<double> &E /*Energy */, 
+    const std::vector<double> &L /* online lum */, 
+    const std::vector<double> &N /* nomber of events*/
+  )
+{
+  double IL=0; //integrated luminosity
+  double IN=0; //integrated energy normalized number of events 
+  for(int i=0;i<E.size(); i++)
+  {
+    IL+=L[i];
+    IN+=double(N[i])*sq(E[i]/E0);
+  }
+  if(IL==0) return 0;
+  return IN/IL;
+}
+
 //find average of the array
 inline double average(size_t size, double *X)
 {

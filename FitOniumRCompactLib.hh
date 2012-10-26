@@ -80,6 +80,8 @@ void swapDRows(Double_t* a,Double_t* b,Int_t n);
 Double_t PiLre(Double_t W,Double_t M);
 Double_t PiLim(Double_t W,Double_t M);
 
+void FillArrayFromFile(std::string fname, int npar, Double_t** Array, int  * npoints);
+void FillArrayFromFile(std::string fname, int npar, std::vector< std::vector<double> >  & Array);
 
 
 #define  idRbg       0

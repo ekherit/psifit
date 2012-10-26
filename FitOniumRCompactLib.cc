@@ -18,6 +18,8 @@
 #include <gsl/gsl_integration.h>
 #include <complex>
 #include <iomanip>
+#include <regex>
+
 #include "FitTools/MathLibrary.h"
 #include "FitOniumRCompactLib.hh"
 using namespace std;
@@ -587,6 +589,67 @@ void FillArrayFromFile(const char* FileName,Double_t** Array,int npar,int nps)
     }
   }
   readingfile.close();
+}
+
+void FillArrayFromFile(std::string fname, int npar, Double_t** Array, int  * npoints)
+{
+  std::cout << "Read data from file " << fname << std::endl;
+  ifstream file(fname);
+  if(!file) 
+  {
+    std::cerr << "Unable to open file : " << fname << std::endl;
+    return;
+  }
+  std::regex comment(" *#.*");
+  std::regex empty(" *");
+  int i=0;
+  while(!file.eof())
+  {
+    std::string line;
+    getline(file,line);
+    std::smatch match;
+    if(std::regex_match(line,match,comment)) continue;
+    if(std::regex_match(line,match,empty)) continue;
+    Array[i]=new Double_t [npar];
+    std::istringstream is(line);
+    for(int j=0;j<npar;j++)
+    {
+      is >> Array[i][j];
+    }
+    i++;
+  }
+  *npoints=i;
+  file.close();
+}
+
+void FillArrayFromFile(std::string fname, int npar, std::vector< std::vector<double> >  &Array)
+{
+  std::cout << "Read data from file " << fname << std::endl;
+  ifstream file(fname);
+  if(!file) 
+  {
+    std::cerr << "Unable to open file : " << fname << std::endl;
+    return;
+  }
+  std::regex comment(" *#.*");
+  std::regex empty(" *");
+  int i=0;
+  while(!file.eof())
+  {
+    std::string line;
+    getline(file,line);
+    std::smatch match;
+    if(std::regex_match(line,match,comment)) continue;
+    if(std::regex_match(line,match,empty)) continue;
+    Array.push_back(std::vector<double>(npar));
+    std::istringstream is(line);
+    for(int j=0;j<npar;j++)
+    {
+      is >> Array[i][j];
+    }
+    i++;
+  }
+  file.close();
 }
 
 void FillArrayFromFile(const char* FileName,Double_t** Array,int npar,int nparNew,int nps)
