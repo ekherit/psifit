@@ -624,7 +624,6 @@ void FillArrayFromFile(std::string fname, int npar, Double_t** Array, int  * npo
 
 void FillArrayFromFile(std::string fname, int npar, std::vector< std::vector<double> >  &Array)
 {
-  std::cout << "Read data from file " << fname << std::endl;
   ifstream file(fname);
   if(!file) 
   {

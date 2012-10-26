@@ -77,32 +77,59 @@ Double_t CrossBhabha=0;
 Double_t CrossGG=0;
 Double_t LUM_CROSS_SECTION=0;
 
-Double_t CrossSInScan[NumMaxP];
-Double_t CrossSErrInScan[NumMaxP];
-Double_t CrossSBBInScan[NumMaxP];
-Double_t CrossSBBErrInScan[NumMaxP];
-Double_t CrossSGGInScan[NumMaxP];
-Double_t CrossSGGErrInScan[NumMaxP];
-Double_t LumInScan[NumMaxP];
-Double_t LumInScanGG[NumMaxP];
-Double_t LumInScanEE[NumMaxP];
-Double_t LumInScanEEGG[NumMaxP];
-Double_t NmhInScan[NumMaxP];
-Double_t LumLgammaInScan[NumMaxP];
-Double_t NbbInScan[NumMaxP];
-Double_t NggInScan[NumMaxP];
-Double_t NLum[NumMaxP];
-Double_t EInScan[NumMaxP];
-Double_t SigmaWInScan[NumMaxP];
-Double_t dSigmaWInScan[NumMaxP];
-Double_t WInScan[NumMaxP];
-Double_t EErrInScan[NumMaxP];
-Double_t WErrInScan[NumMaxP];
-Double_t SignalDiscrepancy[NumMaxP];
-Double_t SignalDiscrepancyError[NumMaxP];
-Double_t BBLumCorr[NumMaxP];
+std::vector<double> CrossSInScan;
+std::vector<double> CrossSErrInScan;
+std::vector<double> CrossSBBInScan;
+std::vector<double> CrossSBBErrInScan;
+std::vector<double> CrossSGGInScan;
+std::vector<double> CrossSGGErrInScan;
+std::vector<double> LumInScan;
+std::vector<double> LumInScanGG;
+std::vector<double> LumInScanEE;
+std::vector<double> LumInScanEEGG;
+std::vector<double> NmhInScan;
+std::vector<double> LumLgammaInScan;
+std::vector<double> NbbInScan;
+std::vector<double> NggInScan;
+std::vector<double> NLum;
+std::vector<double> EInScan;
+std::vector<double> SigmaWInScan;
+std::vector<double> dSigmaWInScan;
+std::vector<double> WInScan;
+std::vector<double> EErrInScan;
+std::vector<double> WErrInScan;
+std::vector<double> SignalDiscrepancy;
+std::vector<double> SignalDiscrepancyError;
+std::vector<double> BBLumCorr;
 
-Int_t    NumEpoints=0;
+void set_number_of_ponints(int NEp)
+{
+  CrossSInScan.resize(NEp);
+  CrossSErrInScan.resize(NEp);
+  CrossSBBInScan.resize(NEp);
+  CrossSBBErrInScan.resize(NEp);
+  CrossSGGInScan.resize(NEp);
+  CrossSGGErrInScan.resize(NEp);
+  LumInScan.resize(NEp);
+  LumInScanGG.resize(NEp);
+  LumInScanEE.resize(NEp);
+  LumInScanEEGG.resize(NEp);
+  NmhInScan.resize(NEp);
+  LumLgammaInScan.resize(NEp);
+  NbbInScan.resize(NEp);
+  NggInScan.resize(NEp);
+  NLum.resize(NEp);
+  EInScan.resize(NEp);
+  SigmaWInScan.resize(NEp);
+  dSigmaWInScan.resize(NEp);
+  WInScan.resize(NEp);
+  EErrInScan.resize(NEp);
+  WErrInScan.resize(NEp);
+  SignalDiscrepancy.resize(NEp);
+  SignalDiscrepancyError.resize(NEp);
+  BBLumCorr.resize(NEp);
+}
+
 Double_t MinChi2=1e+100;
 void fcnResMult    (Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag);
 void print_result(std::ostream & os, TMinuit * minuit, std::string sharp="#");
@@ -155,7 +182,7 @@ double CHI2_SIGNAL;
 double E_CROSS_NORM; //Beam Energy used for normalization of luminosity calculation
 
 TF1 * get_result_function(const std::vector<double> & parRes, double Emin, double Emax);
-void draw_signal_and_energy_deviation(int NEp, const std::vector<double> & parRes);
+void draw_signal_and_energy_deviation(const std::vector<double> & parRes);
 
 int main(int argc, char **argv)
 {
@@ -244,9 +271,7 @@ int main(int argc, char **argv)
   std::vector< std::vector<double> > AllMH; 
   std::cout << "Reading data from file " << INPUT_FILE << "... ";
   FillArrayFromFile(INPUT_FILE,dimMHFile, AllMH);  
-  int npMHFile = AllMH.size();
-
-  std::cout << "read " << npMHFile << " points." << std::endl;
+  std::cout << "read " << AllMH.size() << " points." << std::endl;
   if(opt.count("variate-energy"))
   {
     cout << "Variate energy in each point on: " << ENERGY_VARIATION << " MeV" << endl;
@@ -258,7 +283,7 @@ int main(int argc, char **argv)
     cout << "Random seed is " << RANDOM_SEED << endl;
     TRandom r(RANDOM_SEED);
     cout << setw(5) << "point" << setw(20) << "variation, MeV"  << setw(20) << "new energy, MeV" << endl;
-    for(int i=0;i<npMHFile;i++)
+    for(int i=0;i<AllMH.size();i++)
     {
       double EV = ENERGY_VARIATION == 0 ? AllMH[i][MHEnergyErr] : ENERGY_VARIATION;
       double dW = EV*r.Gaus();
@@ -292,11 +317,8 @@ int main(int argc, char **argv)
   int ASigmaW = 16;
   int AdSigmaW = 17;
 	int ALumCor = 18;
-  int npAP=0;    
-  npAP=npMHFile;
-  //double** AP=new double* [npAP];
-  std::vector < std::vector<double> > AP(npMHFile);
-  for(int i=0;i<npMHFile;i++ )
+  std::vector < std::vector<double> > AP(AllMH.size());
+  for(int i=0;i<AP.size();i++ )
   {      
     AP[i].resize(dimAP);
     //AP[Aind]=new double [dimAP];    
@@ -339,84 +361,17 @@ int main(int argc, char **argv)
       break;
   }
   std::cout << std::endl;
-
-  //char ouputstring[140];
-  //ofstream AA("test.txt", ios::out);
-  //for(int i=0;i<npAP;i++)
-  //{
-  //  sprintf(ouputstring,"  %7.4f %.0f %.0f %.0f",AP[i][AEnergy],AP[i][ARun],AP[i][AMHEv],AP[i][AEE]); 
-  //  AA<<ouputstring<<"\n";	            
-  //}
-  //AA.close();        
-  //Double_t EMin=AP[0][AEnergy]-1 ;      
-
-  //Double_t EMax=AP[npAP-1][AEnergy]+1;
-  //int np=npAP ;   
-
-
-  //Double_t *En_=new Double_t[np];
-  //Double_t *Eerr_=new Double_t[np];
-  //Double_t *SigmaW_=new Double_t[np];
-  //Double_t *dSigmaW_=new Double_t[np];
-  //Double_t *Nmh_=new Double_t[np];
-  //Double_t *Nbb_=new Double_t[np];
-  //Double_t *Ngg_=new Double_t[np];
-  //Double_t *Le_=new Double_t[np];
-  //Double_t *Lp_=new Double_t[np];    
-  //Double_t *Lcor_=new Double_t[np];    
-  //Int_t*        Euse=new Int_t[np];
-  //np=0;
-
-  //Double_t SigmaW=1.0;
-  //for(int i=0;i<npAP;i++)
-  //{   
-  //  En_[np]=AP[i][AEnergy];
-  //  Eerr_[np]=AP[i][AEnergyErr];
-  //  Nmh_[np]=AP[i][AMHEv];
-  //  Nbb_[np]=AP[i][AEE];  //here will be Nee or Ngg
-  //  Ngg_[np]=AP[i][AGG];  //here will be Nee or Ngg
-  //  Le_[np]=AP[i][ALe];   //here will be BES online lum
-  //  Lp_[np]=AP[i][ALp];  
-  //  SigmaW_[np]=AP[i][ASigmaW];
-  //  dSigmaW_[np]=AP[i][AdSigmaW];
-	//	Lcor_[np] = AP[i][ALumCor];
-  //  np++;      
-  //}
-  //SeparatePointsPartNew(np,Nbb_,&NEp,Euse,En_,ENERGY_BIN); 
-  //Double_t *En  =new Double_t[NEp];
-  //Double_t *Eerr=new Double_t[NEp];
-  //Double_t *SW  =new Double_t[NEp];
-  //Double_t *dSW =new Double_t[NEp];
-  //Double_t *Nmh=new  Double_t[NEp];
-  //Double_t *Nbb=new  Double_t[NEp];
-  //Double_t *Ngg=new  Double_t[NEp];
-  //Double_t *Le=new  Double_t[NEp];
-  //Double_t *Lp=new  Double_t[NEp];
-  //Double_t *Lcor=new  Double_t[NEp];
-
-  //SumPointsByQuant(np,NEp,Euse,En_,Nbb_,Eerr_,En,Eerr,false);
-  //SumPointsSimple(np,NEp,Euse,Nmh_,Nmh);
-  //SumPointsSimple(np,NEp,Euse,Nbb_,Nbb); 
-  //SumPointsSimple(np,NEp,Euse,Ngg_,Ngg); 
-  //SumPointsSimple(np,NEp,Euse,Le_,Le); 
-  //SumPointsSimple(np,NEp,Euse,Lp_,Lp);     
-  //SumPointsSimple(np,NEp,Euse,SigmaW_,SW);     
-  //SumPointsSimple(np,NEp,Euse,dSigmaW_,dSW);     
-  //SumPointsSimple(np,NEp,Euse,Lcor_,Lcor);     
-
-  NumEpoints=npAP;
-  int  NEp=npAP;
-  std::vector<double> En(npAP);
-  std::vector<double> Eerr(npAP);
-  std::vector<double> SigmaW(npAP);
-  std::vector<double> dSigmaW(npAP);
-  std::vector<double> Nmh(npAP);
-  std::vector<double> Nbb(npAP);
-  std::vector<double> Ngg(npAP);
-  std::vector<double> Le(npAP);
-  std::vector<double> Lp(npAP);
-  std::vector<double> Lcor(npAP);
-  for(int i=0;i<npAP;i++)
+  std::vector<double> En(AP.size());
+  std::vector<double> Eerr(AP.size());
+  std::vector<double> SigmaW(AP.size());
+  std::vector<double> dSigmaW(AP.size());
+  std::vector<double> Nmh(AP.size());
+  std::vector<double> Nbb(AP.size());
+  std::vector<double> Ngg(AP.size());
+  std::vector<double> Le(AP.size());
+  std::vector<double> Lp(AP.size());
+  std::vector<double> Lcor(AP.size());
+  for(int i=0;i<En.size();i++)
   {   
     En[i]=AP[i][AEnergy];
     Eerr[i]=AP[i][AEnergyErr];
@@ -431,7 +386,7 @@ int main(int argc, char **argv)
   }
 
   int numpar=4;
-  if(FREE_ENERGY_FIT) numpar+=NEp;
+  if(FREE_ENERGY_FIT) numpar+=En.size();
   if(BOTH_FIT==1) numpar+=2;
   if(BOTH_FIT==2) numpar+=3;
   Double_t ECorrBB=0;
@@ -450,12 +405,10 @@ int main(int argc, char **argv)
 
   E_CROSS_NORM = PDGMASS/2.;
 
-  //if(!opt.count("cross-section-gg")) CrossGG = estimate_cross_section2(E_CROSS_NORM, NEp, En, Le, Ngg);
-  //if(!opt.count("cross-section-ee")) CrossBhabha = estimate_cross_section2(E_CROSS_NORM, NEp, En, Le, Nbb);
   if(!opt.count("cross-section-gg")) CrossGG = estimate_cross_section2(E_CROSS_NORM,  En, Le, Ngg);
   if(!opt.count("cross-section-ee")) CrossBhabha = estimate_cross_section2(E_CROSS_NORM,  En, Le, Nbb);
-  std::vector<double> Neegg(NEp); //sum of Nbb and Ngg
-  for(int i=0;i<NEp;i++) Neegg[i]=Nbb[i]+Ngg[i];
+  std::vector<double> Neegg(En.size()); //sum of Nbb and Ngg
+  for(int i=0;i<Neegg.size();i++) Neegg[i]=Nbb[i]+Ngg[i];
   double CrossEEGG = estimate_cross_section2(E_CROSS_NORM, En, Le, Neegg);
   cout << "Estimate cross section for luminosity processes: " << endl;
   cout << setw(25) << "Gamma-gamma cross section"<< setw(20)  <<  CrossGG << " nb. " << endl;
@@ -506,7 +459,8 @@ int main(int argc, char **argv)
       std::cout << "MH + Bhabha + gamma-gamma "<< std::endl;
   }
   cout << "Average cross section of luminosity measurement process: " << LUM_CROSS_SECTION << " nb" << endl;
-  for(int is=0;is<NEp;is++)
+  set_number_of_ponints(En.size());
+  for(int is=0;is<EInScan.size();is++)
   {
     EInScan[is]=En[is];
     WInScan[is]=2.*EInScan[is];
@@ -518,11 +472,6 @@ int main(int argc, char **argv)
     NmhInScan[is]=Nmh[is];   
     NbbInScan[is]=Nbb[is];       
     NggInScan[is]=Ngg[is];       
-    //ECorrBB=1./CrossSBhabhaPP(En[is],&CrossBhabha);
-    //ECorrGG=1./CrossSBhabhaPP(En[is],&CrossGG);
-    //LumInScanEE[is]=NbbInScan[is]*ECorrBB;
-    //LumInScanGG[is]=NggInScan[is]*ECorrGG;
-    //LumInScanEEGG[is]=(NggInScan[is] + NbbInScan[is])/(1./ECorrBB + 1./ECorrGG);
     LumInScanEE[is]=NbbInScan[is]*sq(En[is]/E_CROSS_NORM)/CrossBhabha;
     LumInScanGG[is]=NggInScan[is]*sq(En[is]/E_CROSS_NORM)/CrossGG;
     LumInScanEEGG[is]=(NggInScan[is] + NbbInScan[is])*sq(En[is]/E_CROSS_NORM)/CrossEEGG;
@@ -563,7 +512,6 @@ int main(int argc, char **argv)
         NLum[is]=NggInScan[is]+NbbInScan[is];
         break;
     }
-    //cout<<"BESLUM:"<<LumLgammaInScan[is]<<" LumInScan:"<<LumInScan[is]<< ", BBLumCor=" << BBLumCorr[is] << endl;;
     //calculate mhadr cross section
     CrossSInScan[is]=Nmh[is]/LumInScan[is];
     if(Nmh[is]>4) CrossSErrInScan[is]=sqrt(Nmh[is]*(1.+Nmh[is]/NLum[is]))/LumInScan[is];        
@@ -579,7 +527,7 @@ int main(int argc, char **argv)
   std::cout << "Total luminosity: Lbes=" << LG << "/nb, Lee=" << Lee << "/nb, Lgg="<<Lgg<<"/nb, Leegg="<< Leegg << "/nb" <<std::endl;
   if(opt.count("verbose"))
   {
-    for(int is=0;is<NEp;is++)
+    for(int is=0;is<En.size();is++)
     {
       cout<<"point:"<<is<<" Energy:"<<En[is]<<"NMH:"<<Nmh[is]<<endl;	    
     }
@@ -648,7 +596,7 @@ int main(int argc, char **argv)
   //if(USE_CBS_SIGMAW) MinuitRes->FixParameter(3);
   if(FREE_ENERGY_FIT)
   {
-    for(int j=0;j<NEp;j++)
+    for(int j=0;j<En.size();j++)
     {
       char  NameP[10];
       sprintf(NameP,"dE%d",j);         
@@ -656,7 +604,7 @@ int main(int argc, char **argv)
     }
   }
 
-  int nep = FREE_ENERGY_FIT==false ? 0 : NEp;
+  int nep = FREE_ENERGY_FIT==false ? 0 : EInScan.size();
 
   MinuitRes->mnexcm("MIGRAD", arglistRes,numpar,ierflgRes);
   MinuitRes->mnimpr();
@@ -673,33 +621,12 @@ int main(int argc, char **argv)
   {
     MinuitRes->GetParameter(i,parRes[i],parErrRes[i]);
   }
-  //Int_t npar=numpar;
-  //Double_t grad=0;
-  //Double_t fval=0;
-  //Int_t flag=1;
-  //MinuitRes->Eval(npar, &grad, fval, parRes, flag);
-  //cout << "fval = " << fval << endl;
 
   MinuitRes->mnstat(aminRes,edmRes,errdefRes,nvparRes,nparxRes,icstatRes);
   MinuitRes->mnprin(numpar,aminRes);
 
   int nf=MinuitRes->GetNumFreePars();
-  if(FREE_ENERGY_FIT) nf-=NEp;
-
-  //cout.precision(15);
-  //cout<<"Minuit Mass= "<<PDGMASS+parRes[2]*2.<<endl;
-  //cout<<"PDG Mass= "<<PDGMASS<<endl;
-  //cout.precision(4);
-  //cout<<"M-Mpdg="<<parRes[2]*2.<< " +- " << parErrRes[2]*2. <<  " MeV." << endl;
-  //cout<< "chi2/ndf = " <<MinChi2 << "/(" << NpPP<<"-"<<nf<<") = "  << MinChi2/(NpPP-nf) << ", P(chi2)=" << TMath::Prob(MinChi2,NpPP-nf) << endl;
-  //cout.precision(15);
-  //cout << "Contribution to chi square:" << endl;
-  //cout.precision(4);
-  //cout << "chi2 signal: " << CHI2_SIGNAL <<  " or " << CHI2_SIGNAL/CHI2_TOTAL*100 << "%" << endl;
-  //cout << "chi2 energy: " << CHI2_ENERGY <<  " or " << CHI2_ENERGY/CHI2_TOTAL*100 << "%" <<  endl;
-  //cout << "chi2 lum: "    << CHI2_LUM    <<  " or " << CHI2_LUM/CHI2_TOTAL*100 << "%" << endl;
-  //cout << "Total chi2: " << CHI2_TOTAL << endl;
-  
+  if(FREE_ENERGY_FIT) nf-=EInScan.size();
 
   print_result(std::cout, MinuitRes,"#");
   //copy input file
@@ -734,20 +661,24 @@ int main(int argc, char **argv)
   }
   TApplication* theApp=new  TApplication("App", &argc, argv);
 
-  draw_signal_and_energy_deviation(NEp,parRes);
+  draw_signal_and_energy_deviation(parRes);
 
 
-  GrRes=new TGraphErrors(NEp,WInScan,CrossSInScan,WErrInScan,CrossSErrInScan);
+  GrRes=new TGraphErrors(EInScan.size(),&WInScan[0],&CrossSInScan[0],&WErrInScan[0],&CrossSErrInScan[0]);
   GrRes->SetMarkerStyle(20);
   GrRes->SetMarkerSize(1);
   GrRes->SetMarkerColor(kBlack);
   GrRes->SetLineColor(kBlack);
   GrRes->SetLineWidth(2);
-  double Emin = TMath::MinElement(GrRes->GetN(), GrRes->GetX())-1;
-  double Emax = TMath::MaxElement(GrRes->GetN(), GrRes->GetX())+1;
-  double Erng = TMath::Max(fabs(Emax-PDGMASS), fabs(Emin-PDGMASS));
-  Emin = PDGMASS-Erng;
-  Emax = PDGMASS+Erng;
+  /* Вот таким изъебистым  путем я нахожу максимальное расстояние от
+   * табличного значения края до границы по энергии для данных.
+   * Это называется С++ головного мозга */
+  double range = fabs(PDGMASS-*max_element ( WInScan.begin(), WInScan.end(),
+      [](double x, double y){return fabs(x-PDGMASS) < fabs(y-PDGMASS);}
+      ));
+  //Зато картинка будет симметрична относительно табличного значения
+  double Emin = PDGMASS-range-1;
+  double Emax = PDGMASS+range+1;
   TF1 * FitPsiP = get_result_function(parRes, Emin, Emax);
 
   //Main canvas with fit result //
@@ -763,7 +694,7 @@ int main(int argc, char **argv)
   GrRes->Draw("p");
   gPad->SetBorderMode(0);
   GrRes->GetXaxis()->SetTitle("W, MeV");
-  GrRes->GetYaxis()->SetTitle("#sigma, nb");
+  GrRes->GetYaxis()->SetTitle("#sigma_{obs}, nb");
 
   //calculate positions
   double xx=(Emin+1)/2.*ScaleEGr;
@@ -777,7 +708,7 @@ int main(int argc, char **argv)
   typedef boost::format fmt;
   std::map<std::string, boost::format> format;
   format["chi2"] = fmt("#chi^{2}/ndf = %3.2f / (%d -%d) =%4.2f") % MinChi2  % NpPP % nf % (MinChi2/(NpPP-nf));
-  format["M"]    = fmt("M - M_{PDG} = %3.3f #pm %3.3f MeV")      % (parRes[2]*2.)  % (parErrRes[2]*2.);
+  format["M"]    = fmt("M - M_{PDG} = %3.3f #pm %3.3f MeV") % (parRes[2]*2.)  % (parErrRes[2]*2.);
   format["Sw"]   = fmt("#sigma_{W} = %1.3f #pm %1.3f MeV") % parRes[3] % parErrRes[3];
   format["P"]    = fmt("P(#chi^{2}) = %3.1f%%") % (TMath::Prob(MinChi2,NpPP-nf)*100);
   std::map<std::string, TLatex> latex;
@@ -852,7 +783,7 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
     std::cout << std::endl;
 
   }
-  for (Int_t i=0;i<NumEpoints;i++)
+  for (Int_t i=0;i<EInScan.size();i++)
   {
     Energy=EInScan[i];
     double echi2=0;
@@ -988,14 +919,14 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
 }
 
 
-void draw_signal_and_energy_deviation(int NEp, const std::vector<double> & parRes)
+void draw_signal_and_energy_deviation(const std::vector<double> & parRes)
 {
 
   double EnergyChi2=0;
 	TGraphErrors * dEgr = new TGraphErrors;//energy deviation graph
 	TGraphErrors * dNgr = new TGraphErrors;//signal discrepancy graph
 	gStyle->SetOptFit(kTRUE);
-  for(int is=0;is<NEp;is++)
+  for(int is=0;is<EInScan.size();is++)
   {       
     WErrInScan[is]=WErrInScan[is];
     //if(arguments.FreeEnergy==1) WInScan[is]+=2.*+parRes[is+4];
@@ -1045,7 +976,7 @@ void print_result(std::ostream & os, TMinuit * minuit, string sharp)
   //int flag=1;
   //minuit->Eval(N, &grad, fval, &P[0], flag);
   int nf = minuit->GetNumFreePars();
-  if(FREE_ENERGY_FIT) nf-=NumEpoints;
+  if(FREE_ENERGY_FIT) nf-=EInScan.size();
   int ndf = (NpPP-nf);
   double chi2= MinChi2/ndf;
   double prob = TMath::Prob(MinChi2,NpPP-nf);
