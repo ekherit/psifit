@@ -730,9 +730,6 @@ int main(int argc, char **argv)
 
 static int FCNcall=0;
 
-int FCallCheck=0;
-
-Double_t parprev[10]={0,0,0, 0,0,0, 0,0,0, 0};
 void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag)
 {
   //calculate chisquare
