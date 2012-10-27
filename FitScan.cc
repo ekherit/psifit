@@ -102,6 +102,27 @@ std::vector<double> SignalDiscrepancy;
 std::vector<double> SignalDiscrepancyError;
 std::vector<double> BBLumCorr;
 
+struct ScanPoint_t 
+{
+  double E,dE; //beam energy, MeV
+  double W,dW; //cm energy
+  double Sw,dSw; //energy spread
+  double L;//online lum
+  double Lgg; //gamma-gamma luminosity
+  double Lee; //Bhabha luminosity
+  double Leegg; //luminosity based on Lee and Lgg
+  double XSmh, dXSmh; //cross section of the signal
+  double XSee, dXSee; //cross section of bhabha
+  double XSgg, dXSgg; //cross section of gamma-gamma
+  Long64_t Nmh; //number of multihadronic (signal)
+  Long64_t Nee; //bhabha
+  Long64_t Ngg; //gamma-gamma
+  Long64_t Nlum;//number of events of luminosity process (could be = Ngg or Nee, or Ngg+Nee)
+  double Lcor; //поправки к светимости
+  double DNmh, dDNmh; //разница между фитом и данными в сисле событий
+  double DE, dDE; //разница между фитом и данными для энергии
+};
+
 void set_number_of_ponints(int NEp)
 {
   CrossSInScan.resize(NEp);
