@@ -83,7 +83,7 @@ std::vector<double> CrossSBBInScan;
 std::vector<double> CrossSBBErrInScan;
 std::vector<double> CrossSGGInScan;
 std::vector<double> CrossSGGErrInScan;
-std::vector<double> LumInScan;
+std::vector<double> LumInScan, LumInScanError;
 std::vector<double> LumInScanGG;
 std::vector<double> LumInScanEE;
 std::vector<double> LumInScanEEGG;
@@ -132,6 +132,7 @@ void set_number_of_ponints(int NEp)
   CrossSGGInScan.resize(NEp);
   CrossSGGErrInScan.resize(NEp);
   LumInScan.resize(NEp);
+  LumInScanError.resize(NEp);
   LumInScanGG.resize(NEp);
   LumInScanEE.resize(NEp);
   LumInScanEEGG.resize(NEp);
@@ -170,6 +171,7 @@ std::string OUTPUT_FILE = "fitscan.txt";
 std::string RESULT_FILE = "result.txt";
 std::vector <double> PAR_INI; //initial parameter value
 std::string PAR_INI_STRING;
+double PAR_DM;
 
 enum LuminosityType
 {
@@ -205,6 +207,39 @@ double E_CROSS_NORM; //Beam Energy used for normalization of luminosity calculat
 TF1 * get_result_function(const std::vector<double> & parRes, double Emin, double Emax);
 void draw_signal_and_energy_deviation(const std::vector<double> & parRes);
 
+
+void print_cross_section(void)
+{
+  Double_t parmh[idRNP];
+  parmh[idRbg]=0;
+  parmh[idReff]=1;
+  parmh[idRM]=0;
+  parmh[idRSw]=1.5;   
+  parmh[idRFreeGee]=0;       
+  parmh[idRTauEff]=0;       
+  vector<double> E = 
+  {
+    3675.9,
+    3683.7,
+    3685.1,
+    3686.3,
+    3687.6,
+    3688.8,
+    3693.5
+  };
+  cout << " Printout multihadronic crossection"<< endl;
+  cout << " spread = " << parmh[idRSw] << " MeV" <<  endl;
+  cout << " M  = " <<  _MPsiPrime << " MeV" << endl;
+  cout << " Gtot  = " <<  _GtotPsiPrime << " MeV" << endl;
+  cout << " Gee  = " <<  _GeePsiPrime << " MeV" << endl;
+  cout << setw(15) << "Wcm, MeV" << setw(15) << " sigma, nb" << endl;
+  for(int i=0;i < E.size() ;i++)
+  {
+    double sigmaMH=CrSOniumR(_MethodAzimov,_IdPsiPrime,E[i]/2.,parmh);
+    cout << setw(15) << E[i] << setw(15) << sigmaMH << endl;
+  }
+}
+
 int main(int argc, char **argv)
 {
   namespace po=boost::program_options;
@@ -232,6 +267,8 @@ int main(int argc, char **argv)
     ("result,-r", po::value<std::string>(&RESULT_FILE), "Result of the fit accumulated in this file")
     ("exit", "exit after fitting")
     ("par", po::value<std::string> (&PAR_INI_STRING), "Initial parameter values")
+    ("par-dm", po::value<double>(&PAR_DM)->default_value(0), "initial par value for mass ")
+    ("print","Print cross section")
     ;
   po::positional_options_description pos;
   pos.add("input",-1);
@@ -257,6 +294,12 @@ int main(int argc, char **argv)
     return 0;
   }
 
+  if(opt.count("print"))
+  {
+    print_cross_section();
+    return 0;
+  }
+
 
   if(opt.count("nochi2")) USE_CHI2=false;
   std::cout << "Chi2 fit: " << boolalpha << USE_CHI2 << std::endl;
@@ -275,17 +318,18 @@ int main(int argc, char **argv)
   TF1* FitResBG=0;
   TGraphErrors* GrRes=0;
   TLine* LineRes=0;
-  int dimMHFile=10;
+  int dimMHFile=11;
   int MHRun=0;
   int MHLum=1;
-  int MHEnergy=2;
-  int MHEnergyErr=3;
-  int MHSigmaW=4;
-  int MHdSigmaW=5;
-  int MHNmh=6; 
-  int MHNee=7;
-  int MHNgg=8; 
-  int MHLumCor=9; 
+  int MHLumError=2;
+  int MHEnergy=3;
+  int MHEnergyErr=4;
+  int MHSigmaW=5;
+  int MHdSigmaW=6;
+  int MHNmh=7; 
+  int MHNee=8;
+  int MHNgg=9; 
+  int MHLumCor=10; 
 
   /* AllMH хранит массив читаемых из файла данных
    * первый индекс - номер строчки, второй индекс - номер столбца */
@@ -318,7 +362,7 @@ int main(int argc, char **argv)
     }
   }
 
-  int dimAP= 19;
+  int dimAP= 20;
   int ARun=0;
   int AEnergy =1;
   int AEnergyErr=2;
@@ -338,6 +382,7 @@ int main(int argc, char **argv)
   int ASigmaW = 16;
   int AdSigmaW = 17;
 	int ALumCor = 18;
+  int ALumError = 19;
   std::vector < std::vector<double> > AP(AllMH.size());
   for(int i=0;i<AP.size();i++ )
   {      
@@ -354,6 +399,7 @@ int main(int argc, char **argv)
     AP[i][AEE]=AllMH[i][MHNee];
     AP[i][AGG]=AllMH[i][MHNgg];
     AP[i][ALumCor]=AllMH[i][MHLumCor];
+    AP[i][ALumError]=AllMH[i][MHLumError];
   }
   if(RESONANCE==AUTORES)
   {
@@ -361,7 +407,7 @@ int main(int argc, char **argv)
     else RESONANCE=PSI2SRES;
   }
   std::map<std::string,double> initial_par_value;
-  initial_par_value["dm"]=0; //half mass shift
+  initial_par_value["dm"]=opt["par-dm"].as<double>(); //half mass shift
   initial_par_value["bg"]=10;//nb //background (continuum)
   initial_par_value["eps"]=0.6; //efficiency
   initial_par_value["sigma"]=1.3; //energy spread
@@ -370,7 +416,8 @@ int main(int argc, char **argv)
   {
     case JPSIRES:
       PDGMASS=_MJPsi;
-      initial_par_value["dm"]=0.112; //half mass shift
+//      initial_par_value["dm"]=0.112; //half mass shift
+      initial_par_value["dm"]=PAR_DM; //half mass shift
       initial_par_value["sigma"]=1.1; //half mass shift
       std::cout << "JPSI";
       break;
@@ -392,6 +439,7 @@ int main(int argc, char **argv)
   std::vector<double> Le(AP.size());
   std::vector<double> Lp(AP.size());
   std::vector<double> Lcor(AP.size());
+  std::vector<double> Lerror(AP.size());
   for(int i=0;i<En.size();i++)
   {   
     En[i]=AP[i][AEnergy];
@@ -404,6 +452,7 @@ int main(int argc, char **argv)
     SigmaW[i]=AP[i][ASigmaW];
     dSigmaW[i]=AP[i][AdSigmaW];
 		Lcor[i] = AP[i][ALumCor];
+    Lerror[i] = AP[i][ALumError];
   }
 
   int numpar=4;
@@ -506,6 +555,7 @@ int main(int argc, char **argv)
     {
       case BESLUM:
         LumInScan[is]=LumLgammaInScan[is];
+        LumInScanError[is]=Lerror[is];
         NLum[is]=1e100;
         break;
       case NEELUM:
@@ -605,15 +655,21 @@ int main(int argc, char **argv)
     cout << endl;
   }
 
-  Double_t stepRes[5] =  {1, 0.1,0.1,0.1,0.0};
+
+  Double_t stepRes[5] =  {1, 0.1,1,0.1,0.0};
 
 
 
   MinuitRes->SetMaxIterations(100000000);                         
   MinuitRes->DefineParameter(0,"bg",vstartRes[0],stepRes[0],-100,+100);
   MinuitRes->DefineParameter(1,"eff",vstartRes[1],stepRes[1],0.0,1.0);      
-  MinuitRes->DefineParameter(2,"dM/2.",vstartRes[2],stepRes[2],-0.5,0.5);      
+  MinuitRes->DefineParameter(2,"dM/2.",vstartRes[2],stepRes[2],-10,10);      
   MinuitRes->DefineParameter(3,"SigmaW",vstartRes[3],stepRes[3],0.5,2.0);
+  std::cout << "Initial par value: " << std::endl;
+  for(int i=0;i<5; i++)
+  {
+    cout << "par["<< i << "]=" << vstartRes[i] << "  step=" << stepRes[i] << std::endl;
+  }
   //if(USE_CBS_SIGMAW) MinuitRes->FixParameter(3);
   if(FREE_ENERGY_FIT)
   {
@@ -789,7 +845,7 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
   if( FCNcall ==0 )
   {
     std::cout << std::setw(3)  << "#pn";
-    std::cout << std::setw(10) << "E, MeV";
+    std::cout << std::setw(10) << "W, MeV";
     std::cout << std::setw(10) << "L,1/nb";
     std::cout << std::setw(10) << "Nmh";
     std::cout << std::setw(10) << "sigMH,nb";
@@ -834,6 +890,11 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
     sigmaGG = CrossGG * sq(E_CROSS_NORM/Energy);                     
     switch(LUMINOSITY)
     {
+      case BESLUM:
+        lumFull=LumInScan[i];
+        Nexp=NLum[i];
+        nFull = sq(LumInScan[i]/LumInScanError[i]);
+        break;
       case NMHEELUM:
         nFull = (NbbInScan[i]+NmhInScan[i]);
         sigmaFull=sigmaMH+sigmaBB;
@@ -867,7 +928,7 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
     if( FCNcall ==0 )
     {
       std::cout << setw(3) << i+1;
-      std::cout << boost::format("%10.3f") % Energy;
+      std::cout << boost::format("%10.3f") % (2*Energy);
       std::cout << boost::format("%10.3f") % lumFull;
       std::cout << setw(10) << NmhInScan[i];
       std::cout << boost::format("%10.3f") % sigmaMH;

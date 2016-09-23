@@ -101,7 +101,8 @@ Double_t CrSOniumRAzimov(Int_t Id,Double_t Eb,Double_t* par)
       //      Gh=Gtot*(1.-3.*Bll);
       //      Gtot=0.286;//!!!!!
       Gee=_GeePsiPrime;
-      Gtot=0.317;//!!!!!
+      //Gtot=0.317;//!!!!!
+      Gtot=_GtotPsiPrime;
       Bh=0.9785;// more precisely -> 0.13% //    
       ParF[idBhadr]=Bh;
     }     
@@ -194,6 +195,7 @@ Double_t K_FuncRInterfPsiP(Double_t W, Double_t* parf)
       Double_t  PiHre=-0.6e-2;//  ! Berends, Kommen for W from 2 to 4 GeV
       complex<double> Pi10C(1.-(PiLre(W,_me)+PiLre(W,_mmu)+PiLre(W,_MTau)+PiHre),(PiLim(W,_me)+PiLim(W,_mmu)+PiLim(W,_MTau)));         
       complex<double> M2(sq(M/W)-1.,-Gtot*M/W/W);
+      //complex<double> M2(sq(M/W)-1.,-Gtot*M/M/M);
       complex<double> beta_11(betaW-1.,0.);
       f=pow(M2,beta_11);
       fp=pow(M2,beta_11)/Pi10C;             
@@ -203,8 +205,10 @@ Double_t K_FuncRInterfPsiP(Double_t W, Double_t* parf)
       Double_t M2_S=sq(M/W);
       Double_t delta=(Gtot*M)/s;        
 
+      //Ratio=0;
  
       rI= 12.*TMath::Pi()*Fg/s/M*effh*(
+      //rI= 12.*TMath::Pi()*Fg/M/M/M*effh*(
                    imag(f)*TMath::Pi()*betaW/sin(TMath::Pi()*betaW)*(1.+DeltaE)
                    -betaW*0.5*((atan(M/Gtot)-atan((M-W*W/M)/Gtot))*(1.+sq(M/W)))
                    +0.25*betaW*Gtot*M/W/W*(log((sq(M2_S)+sq(delta))/(sq(M2_S-1.)+sq(delta))))                                      
