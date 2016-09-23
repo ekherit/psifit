@@ -3,7 +3,7 @@ all : psifit draw
 LIBS = `root-config --libs` -lMinuit -L$(HOME)/local/lib  -lboost_program_options
 CXXFLAGS = `root-config --cflags` -I$(HOME)/local/include -I$(HOME)/work/ -std=c++11
 
-CC=g++-4.7
+CC=g++
 
 BINDIR=$(HOME)/work/bin
 psifit : FitOniumRCompactLib.o psifit.o
