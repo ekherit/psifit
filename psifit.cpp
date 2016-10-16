@@ -847,10 +847,10 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
     std::cout << std::setw(3)  << "#pn";
     std::cout << std::setw(10) << "W, MeV";
     std::cout << std::setw(10) << "L,1/nb";
-    std::cout << std::setw(10) << "Nmh";
+    std::cout << std::setw(20) << "Nmh";
     std::cout << std::setw(10) << "sigMH,nb";
     std::cout << std::setw(10) << "Lmh,1/nb";
-    std::cout << std::setw(10) << "Nlum";
+    std::cout << std::setw(12) << "Nlum";
     std::cout << std::setw(10) << "sigLum,nb";
     std::cout << std::setw(10) << "L,1/nb";
     for(unsigned i=0;i<4;++i) std::cout << setw(7) << "p"+std::string(boost::lexical_cast<std::string>(i));
@@ -930,10 +930,10 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
       std::cout << setw(3) << i+1;
       std::cout << boost::format("%10.3f") % (2*Energy);
       std::cout << boost::format("%10.3f") % lumFull;
-      std::cout << setw(10) << NmhInScan[i];
+      std::cout << boost::format("%20d")   %  (unsigned long long)(NmhInScan[i]);
       std::cout << boost::format("%10.3f") % sigmaMH;
       std::cout << boost::format("%10.3f") % (NmhInScan[i]/sigmaMH);
-      std::cout << setw(10) << NLum[i];
+      std::cout << boost::format("%12d")   %  NLum[i];
       std::cout << boost::format("%10.3f") % (NLum[i]/LumInScan[i]);
       std::cout << boost::format("%10.3f") % LumInScan[i];
       for(unsigned i=0;i<4;++i) std::cout << boost::format("%7.2f") % parmh[i];
@@ -1050,6 +1050,7 @@ void print_result(std::ostream & os, TMinuit * minuit, string sharp)
   {
     minuit->GetParameter(i, P[i], dP[i]);
   }
+  std::cout << boost::format("--par=\"%5.1f %4.2f %6.3f %4.3f\"") % P[0] % P[1] %P[2] % P[3] << std::endl;
   //double grad=0;
   //double fval=0;
   //int flag=1;
