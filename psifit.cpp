@@ -242,6 +242,8 @@ void print_cross_section(void)
 
 int main(int argc, char **argv)
 {
+  std::map<std::string, double> fixed_parameters;
+  std::string fixed_parameters_string;
   namespace po=boost::program_options;
   po::options_description opt_desc("Allowed options");
   opt_desc.add_options()
@@ -268,6 +270,7 @@ int main(int argc, char **argv)
     ("exit", "exit after fitting")
     ("par", po::value<std::string> (&PAR_INI_STRING), "Initial parameter values")
     ("par-dm", po::value<double>(&PAR_DM)->default_value(0), "initial par value for mass ")
+    ("fix",po::value<std::string>(&fixed_parameters_string), "Fix paremeter: name=<value>[,name2=<value>]...") 
     ("print","Print cross section")
     ;
   po::positional_options_description pos;
@@ -628,6 +631,12 @@ int main(int argc, char **argv)
   arglistRes[0] = 2;
   MinuitRes->mnexcm("SET STRATEGY", arglistRes,1,ierflgRes);
 
+  std::map<std::string,int> par_index;
+  par_index["bg"]    = 0;
+  par_index["eps"]   = 1;
+  par_index["dm"]    = 2;
+  par_index["sigma"] = 3;
+
   Double_t vstartRes[5]= {
     initial_par_value["bg"],
     initial_par_value["eps"],
@@ -670,6 +679,32 @@ int main(int argc, char **argv)
   {
     cout << "par["<< i << "]=" << vstartRes[i] << "  step=" << stepRes[i] << std::endl;
   }
+
+  //Fix parameter
+  if(opt.count("fix"))
+  {
+    std::list<std::string> fixed_parameter_list;
+    boost::split(fixed_parameter_list,fixed_parameters_string,boost::is_any_of(", "));
+    for(auto item : fixed_parameter_list)
+    {
+      std::vector<std::string> name_value;
+      boost::split(name_value,item,boost::is_any_of("= "));
+      fixed_parameters[name_value[0]] = stod(name_value[1]);
+    }
+
+    for(auto fix : fixed_parameters)
+    {
+      std::string name = fix.first;
+      double value = fix.second;
+      int index = par_index[name];
+      MinuitRes->DefineParameter(index,name.c_str(),value,0,0,0);
+      MinuitRes->FixParameter(index);
+    }
+  }
+
+
+
+
   //if(USE_CBS_SIGMAW) MinuitRes->FixParameter(3);
   if(FREE_ENERGY_FIT)
   {
@@ -678,6 +713,8 @@ int main(int argc, char **argv)
       char  NameP[10];
       sprintf(NameP,"dE%d",j);         
       MinuitRes->DefineParameter(j+4,NameP,0,0.1,-2.0,+2.0);        
+//      if(j==5) MinuitRes->DefineParameter(j+4,NameP,0,0.1,0,+2.0);        
+
     }
   }
 
