@@ -10,6 +10,7 @@
 using ibn::sq;
 using ibn::cb;
 
+
 /* Estimate cross section using BES online lum */
 inline double estimate_cross_section 
   (
