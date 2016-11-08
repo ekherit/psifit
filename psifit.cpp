@@ -60,6 +60,7 @@
 #include <TPostScript.h>
 #include <TApplication.h>
 #include <TRandom.h>
+#include <TFile.h>
 
 R__EXTERN TSystem *gSystem;
 extern void InitGui();
@@ -205,7 +206,7 @@ double CHI2_SIGNAL;
 double E_CROSS_NORM; //Beam Energy used for normalization of luminosity calculation
 
 TF1 * get_result_function(const std::vector<double> & parRes, double Emin, double Emax);
-void draw_signal_and_energy_deviation(const std::vector<double> & parRes);
+TCanvas * draw_signal_and_energy_deviation(const std::vector<double> & parRes);
 
 
 void print_cross_section(void)
@@ -244,6 +245,7 @@ int main(int argc, char **argv)
 {
   std::map<std::string, double> fixed_parameters;
   std::string fixed_parameters_string;
+  std::string lumstr="gg";
   namespace po=boost::program_options;
   po::options_description opt_desc("Allowed options");
   opt_desc.add_options()
@@ -251,7 +253,7 @@ int main(int argc, char **argv)
     ("verbose,v","Verbose output")
     ("input",po::value<std::string>(&INPUT_FILE)->default_value("scan.txt"),"data file")
     ("output", po::value<std::string>(&OUTPUT_FILE)->default_value("fitscan.txt"), "Output file with the result")
-    ("lum,l", po::value<std::string>()->default_value("gg"),"luminosity used: bes, ee, gg (default), eegg, mhee, mhgg, mheegg")
+    ("lum,l", po::value<std::string>(&lumstr)->default_value("gg"),"luminosity used: bes, ee, gg (default), eegg, mhee, mhgg, mheegg")
     ("resonance,R", po::value<unsigned>(&RESONANCE)->default_value(AUTORES),"resonance: 0 - AUTO, 1 - JPSI, 2 - PSI2S")
     ("free-energy,E","allow energy points to be variated (default)")
     ("nofree-energy","disable energy points to be variated")
@@ -487,8 +489,6 @@ int main(int argc, char **argv)
   cout << setw(25) << "Gamma-gamma cross section"<< setw(20)  <<  CrossGG << " nb. " << endl;
   cout << setw(25) << "Bhabha cross section" << setw(20) << CrossBhabha << " nb" << endl;
 	cout << "Luminosity used: ";
-  std::string lumstr="gg";
-  lumstr=opt["lum"].as<string>();
   if(lumstr=="bes")
   {
       LUMINOSITY = BESLUM;
@@ -775,7 +775,8 @@ int main(int argc, char **argv)
   }
   TApplication* theApp=new  TApplication("App", &argc, argv);
 
-  draw_signal_and_energy_deviation(parRes);
+  TFile f((OUTPUT_FILE+".root").c_str(),"RECREATE");
+  TCanvas * diviation_c  = draw_signal_and_energy_deviation(parRes);
 
 
   GrRes=new TGraphErrors(EInScan.size(),&WInScan[0],&CrossSInScan[0],&WErrInScan[0],&CrossSErrInScan[0]);
@@ -836,8 +837,9 @@ int main(int argc, char **argv)
   string pdf_file = OUTPUT_FILE+".pdf";
   string root_file = OUTPUT_FILE+".root";
   gPad->SaveAs(pdf_file.c_str());
-  gPad->SaveAs(root_file.c_str());
-
+  //gPad->SaveAs(root_file.c_str());
+  diviation_c->Write();
+  mcanvas->Write();
   if(!opt.count("exit")) theApp->Run();
   return 0;
 }
@@ -1035,7 +1037,7 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
 }
 
 
-void draw_signal_and_energy_deviation(const std::vector<double> & parRes)
+TCanvas * draw_signal_and_energy_deviation(const std::vector<double> & parRes)
 {
 
   double EnergyChi2=0;
@@ -1053,10 +1055,14 @@ void draw_signal_and_energy_deviation(const std::vector<double> & parRes)
 		dNgr->SetPointError(is, WErrInScan[is], SignalDiscrepancyError[is]);
   }
 
+  TCanvas * canvas = new TCanvas("deviation_canvas","Canvas deviation", 777, 800);
+
   if(FREE_ENERGY_FIT)
   {
     cout << "Draw energy deviation" << endl;
-    TCanvas * dEc = new TCanvas("dEc", "Energy deviation", 777,480);
+    //TCanvas * dEc = new TCanvas("dEc", "Energy deviation", 777,480);
+    canvas->Divide(1,2);
+    canvas->cd(1);
     dEgr->SetMarkerStyle(21);
     dEgr->SetLineWidth(2);
     dEgr->SetMarkerSize(1);
@@ -1064,9 +1070,10 @@ void draw_signal_and_energy_deviation(const std::vector<double> & parRes)
     dEgr->GetXaxis()->SetTitle("W, MeV");
     dEgr->GetYaxis()->SetTitle("W_{exp}-W_{CBS}, MeV");
     dEgr->Fit("pol0", "Q");
+    canvas->cd(2);
   }
-  cout << "Draw signal deviation" << endl;
-	TCanvas * dNc = new TCanvas("dNc", "Number of visible events of signal deviation",777,480);
+  //cout << "Draw signal deviation" << endl;
+	//TCanvas * dNc = new TCanvas("dNc", "Number of visible events of signal deviation",777,480);
 	dNgr->SetMarkerStyle(21);
 	dNgr->SetLineWidth(2);
 	dNgr->SetMarkerSize(1);
@@ -1074,6 +1081,7 @@ void draw_signal_and_energy_deviation(const std::vector<double> & parRes)
 	dNgr->GetXaxis()->SetTitle("W, MeV");
 	dNgr->GetYaxis()->SetTitle("N_{vis} - N_{exp}");
 	dNgr->Fit("pol0", "Q");
+  return canvas;
 }
 
 
