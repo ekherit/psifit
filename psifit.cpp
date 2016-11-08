@@ -838,8 +838,9 @@ int main(int argc, char **argv)
   string root_file = OUTPUT_FILE+".root";
   gPad->SaveAs(pdf_file.c_str());
   //gPad->SaveAs(root_file.c_str());
-  diviation_c->Write();
+  //diviation_c->Write();
   mcanvas->Write();
+  f.Close();
   if(!opt.count("exit")) theApp->Run();
   return 0;
 }
@@ -1042,7 +1043,9 @@ TCanvas * draw_signal_and_energy_deviation(const std::vector<double> & parRes)
 
   double EnergyChi2=0;
 	TGraphErrors * dEgr = new TGraphErrors;//energy deviation graph
+  dEgr->SetName("dE");
 	TGraphErrors * dNgr = new TGraphErrors;//signal discrepancy graph
+  dNgr->SetName("dN");
 	gStyle->SetOptFit(kTRUE);
   for(int is=0;is<EInScan.size();is++)
   {       
@@ -1055,7 +1058,7 @@ TCanvas * draw_signal_and_energy_deviation(const std::vector<double> & parRes)
 		dNgr->SetPointError(is, WErrInScan[is], SignalDiscrepancyError[is]);
   }
 
-  TCanvas * canvas = new TCanvas("deviation_canvas","Canvas deviation", 777, 800);
+  TCanvas * canvas = new TCanvas("dc","Canvas deviation", 777, 800);
 
   if(FREE_ENERGY_FIT)
   {
@@ -1081,6 +1084,9 @@ TCanvas * draw_signal_and_energy_deviation(const std::vector<double> & parRes)
 	dNgr->GetXaxis()->SetTitle("W, MeV");
 	dNgr->GetYaxis()->SetTitle("N_{vis} - N_{exp}");
 	dNgr->Fit("pol0", "Q");
+  dEgr->Write();
+  dNgr->Write();
+  canvas->Write();
   return canvas;
 }
 
