@@ -22,6 +22,12 @@
 
 #include "FitTools/MathLibrary.h"
 #include "FitOniumRCompactLib.hh"
+
+
+bool USE_CBS_SIGMAW_EACH_POINT=false;
+double CBS_SIGMA_W_IN_CURRENT_POINT=1;
+
+
 using namespace std;
 using std::setprecision;
 double rangescale=1.5;
@@ -168,6 +174,11 @@ Double_t K_FuncRInterfPsiP(Double_t W, Double_t* parf)
   Double_t  efftt=parf[idefftau];
   Double_t  vy=sqrt(1.-sq(2*_MTau/W));  
   Double_t  Rtt=(3.-sq(vy))*0.5*vy*(1.-0.00015245952901473550*(0.5*W-1839.01));//simple approximation
+
+  if(USE_CBS_SIGMAW_EACH_POINT)
+  {
+    Sw = CBS_SIGMA_W_IN_CURRENT_POINT;
+  }
 
      if(parf[idFreeInt]==1)
       { 

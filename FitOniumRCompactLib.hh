@@ -143,5 +143,7 @@ void FillArrayFromFile(std::string fname, int npar, std::vector< std::vector<dou
 #define  idSum0R    32
 #define  idNPar     33
 
+extern bool USE_CBS_SIGMAW_EACH_POINT;
+extern double CBS_SIGMA_W_IN_CURRENT_POINT;
 
 #endif

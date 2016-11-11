@@ -165,6 +165,7 @@ unsigned BOTH_FIT=0;
 double ENERGY_BIN=0.02;
 double EMS_SCALE=1;
 
+
 int RANDOM_SEED=0;
 double ENERGY_VARIATION=0;
 std::string INPUT_FILE = "scan.txt";
@@ -172,6 +173,8 @@ std::string OUTPUT_FILE = "fitscan.txt";
 std::string RESULT_FILE = "result.txt";
 std::vector <double> PAR_INI; //initial parameter value
 std::string PAR_INI_STRING;
+std::map<std::string,int> PAR_INDEX;
+int PAR_INDEX_DSIGMA=0;
 double PAR_DM;
 
 enum LuminosityType
@@ -202,6 +205,7 @@ double CHI2_TOTAL;
 double CHI2_LUM;
 double CHI2_ENERGY;
 double CHI2_SIGNAL;
+double CHI2_CBS_SIGMAW;
 
 double E_CROSS_NORM; //Beam Energy used for normalization of luminosity calculation
 
@@ -274,6 +278,7 @@ int main(int argc, char **argv)
     ("par-dm", po::value<double>(&PAR_DM)->default_value(0), "initial par value for mass ")
     ("fix",po::value<std::string>(&fixed_parameters_string), "Fix paremeter: name=<value>[,name2=<value>]...") 
     ("print","Print cross section")
+    ("cbs_sigmaw_each_point","Use different cbs energy spread for each energy point")
     ;
   po::positional_options_description pos;
   pos.add("input",-1);
@@ -314,6 +319,7 @@ int main(int argc, char **argv)
 
   if(opt.count("free-energy")) FREE_ENERGY_FIT=true;
   if(opt.count("nofree-energy")) FREE_ENERGY_FIT=false;
+  USE_CBS_SIGMAW_EACH_POINT  = opt.count("cbs_sigmaw_each_point");
   std::cout << "Use free energy fit: " << FREE_ENERGY_FIT << std::endl;
 
 
@@ -462,6 +468,7 @@ int main(int argc, char **argv)
 
   int numpar=4;
   if(FREE_ENERGY_FIT) numpar+=En.size();
+  if(USE_CBS_SIGMAW_EACH_POINT) numpar+=En.size();
   if(BOTH_FIT==1) numpar+=2;
   if(BOTH_FIT==2) numpar+=3;
   Double_t ECorrBB=0;
@@ -631,11 +638,10 @@ int main(int argc, char **argv)
   arglistRes[0] = 2;
   MinuitRes->mnexcm("SET STRATEGY", arglistRes,1,ierflgRes);
 
-  std::map<std::string,int> par_index;
-  par_index["bg"]    = 0;
-  par_index["eps"]   = 1;
-  par_index["dm"]    = 2;
-  par_index["sigma"] = 3;
+  PAR_INDEX["bg"]    = 0;
+  PAR_INDEX["eps"]   = 1;
+  PAR_INDEX["dm"]    = 2;
+  PAR_INDEX["sigma"] = 3;
 
   Double_t vstartRes[5]= {
     initial_par_value["bg"],
@@ -667,9 +673,11 @@ int main(int argc, char **argv)
 
   Double_t stepRes[5] =  {1, 0.1,1,0.1,0.0};
 
-
-
   MinuitRes->SetMaxIterations(100000000);                         
+
+
+  //define parameters
+
   MinuitRes->DefineParameter(0,"bg",vstartRes[0],stepRes[0],-100,+100);
   MinuitRes->DefineParameter(1,"eff",vstartRes[1],stepRes[1],0.0,1.0);      
   MinuitRes->DefineParameter(2,"dM/2.",vstartRes[2],stepRes[2],-10,10);      
@@ -696,7 +704,7 @@ int main(int argc, char **argv)
     {
       std::string name = fix.first;
       double value = fix.second;
-      int index = par_index[name];
+      int index = PAR_INDEX[name];
       MinuitRes->DefineParameter(index,name.c_str(),value,0,0,0);
       MinuitRes->FixParameter(index);
     }
@@ -705,20 +713,34 @@ int main(int argc, char **argv)
 
 
 
+  int index=4;
   //if(USE_CBS_SIGMAW) MinuitRes->FixParameter(3);
   if(FREE_ENERGY_FIT)
   {
-    for(int j=0;j<En.size();j++)
+    PAR_INDEX["dE"]=index;
+    for(int j=0;j<En.size();j++,index++)
     {
       char  NameP[10];
       sprintf(NameP,"dE%d",j);         
-      MinuitRes->DefineParameter(j+4,NameP,0,0.1,-2.0,+2.0);        
+      MinuitRes->DefineParameter(index,NameP,0,0.1,-0.5,+0.5);        
 //      if(j==5) MinuitRes->DefineParameter(j+4,NameP,0,0.1,0,+2.0);        
-
     }
   }
 
-  int nep = FREE_ENERGY_FIT==false ? 0 : EInScan.size();
+  if(USE_CBS_SIGMAW_EACH_POINT)
+  {
+    PAR_INDEX["dsigma"]=index;
+    PAR_INDEX_DSIGMA = index;
+    MinuitRes->FixParameter(PAR_INDEX["sigma"]);
+    for(int j=0;j<En.size();j++,index++)
+    {
+      char  NameP[10];
+      sprintf(NameP,"sW%d",j);         
+      MinuitRes->DefineParameter(index,NameP,0,0.1,-10,+10);        
+    }
+  }
+
+  //int nep = FREE_ENERGY_FIT==false ? 0 : EInScan.size();
 
   MinuitRes->mnexcm("MIGRAD", arglistRes,numpar,ierflgRes);
   MinuitRes->mnimpr();
@@ -741,6 +763,7 @@ int main(int argc, char **argv)
 
   int nf=MinuitRes->GetNumFreePars();
   if(FREE_ENERGY_FIT) nf-=EInScan.size();
+  if(USE_CBS_SIGMAW_EACH_POINT) nf-=EInScan.size();
 
   print_result(std::cout, MinuitRes,"#");
   //copy input file
@@ -909,8 +932,13 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
     }
     if(USE_CBS_SIGMAW)
     {
-      //parmh[idRSw]=SigmaWInScan[i];
       SigmaWChi2+= sq((parmh[idRSw] - SigmaWInScan[i])/dSigmaWInScan[i]);
+    }
+    if(USE_CBS_SIGMAW_EACH_POINT)
+    {
+      double dS = parmh[PAR_INDEX_DSIGMA + i];
+      SigmaWChi2+= sq(dS/dSigmaWInScan[i]);
+      CBS_SIGMA_W_IN_CURRENT_POINT = SigmaWInScan[i] + dS;
     }
     //Correction to efficiency
     //parmh[idReff]=par[1]*MhadrCor(2*Energy);
@@ -1026,6 +1054,7 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
   f = chisq;
   if(FREE_ENERGY_FIT) f+=EnergyChi2;//;    
   if(USE_CBS_SIGMAW) f+=SigmaWChi2;    
+  if(USE_CBS_SIGMAW_EACH_POINT) f+=SigmaWChi2;
   if(MinChi2>f)
   {
     MinChi2=f;
@@ -1033,6 +1062,7 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
     CHI2_TOTAL=f;
     CHI2_LUM = LumChi2;
     CHI2_SIGNAL = SignalChi2;
+    CHI2_CBS_SIGMAW = SigmaWChi2;
   }
   FCNcall=1;
 }
@@ -1116,6 +1146,7 @@ void print_result(std::ostream & os, TMinuit * minuit, string sharp)
   os << sharp << "   chi2 signal: " << CHI2_SIGNAL <<  " or " << CHI2_SIGNAL/CHI2_TOTAL*100 << "%" << endl;
   os << sharp << "   chi2 energy: " << CHI2_ENERGY <<  " or " << CHI2_ENERGY/CHI2_TOTAL*100 << "%" <<  endl;
   os << sharp << "      chi2 lum: " << CHI2_LUM    <<  " or " << CHI2_LUM/CHI2_TOTAL*100 << "%" << endl;
+  os << sharp << "chi2 cbs sigma w: " << CHI2_CBS_SIGMAW  <<  " or " << CHI2_CBS_SIGMAW/CHI2_TOTAL*100 << "%" << endl;
   os << sharp << "    Total chi2: " << CHI2_TOTAL   << endl;
   os << sharp << " ndf    = " << ndf  << endl;
   os << sharp << " chi2/ndf = " <<MinChi2 << "/(" << NpPP<<"-"<<nf<<") = "  << chi2 <<  endl;
