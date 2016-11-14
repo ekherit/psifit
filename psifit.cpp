@@ -736,9 +736,10 @@ int main(int argc, char **argv)
     {
       char  NameP[10];
       sprintf(NameP,"sW%d",j);         
-      MinuitRes->DefineParameter(index,NameP,0,0.1,-10,+10);        
+      MinuitRes->DefineParameter(index,NameP,0,0.1,-0.5,+0.5);        
     }
   }
+  MinuitRes->mnprin(3,0);
 
   //int nep = FREE_ENERGY_FIT==false ? 0 : EInScan.size();
 
@@ -873,6 +874,10 @@ static int FCNcall=0;
 void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag)
 {
   //calculate chisquare
+  //for(int i=0;i<18;i++)
+  //{
+  //  std::cout << "par" << i <<  " = " << par[i] << std::endl;
+  //}
   Double_t chisq =0;
   Double_t chisqbb = 0;
   Double_t chisqgg = 0;
@@ -936,7 +941,7 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
     }
     if(USE_CBS_SIGMAW_EACH_POINT)
     {
-      double dS = parmh[PAR_INDEX_DSIGMA + i];
+      double dS = par[PAR_INDEX_DSIGMA + i];
       SigmaWChi2+= sq(dS/dSigmaWInScan[i]);
       CBS_SIGMA_W_IN_CURRENT_POINT = SigmaWInScan[i] + dS;
     }
@@ -1054,7 +1059,22 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
   f = chisq;
   if(FREE_ENERGY_FIT) f+=EnergyChi2;//;    
   if(USE_CBS_SIGMAW) f+=SigmaWChi2;    
-  if(USE_CBS_SIGMAW_EACH_POINT) f+=SigmaWChi2;
+  if(USE_CBS_SIGMAW_EACH_POINT) 
+  {
+    f+=SigmaWChi2;
+    //std::cout << "f=" << f << "  sigmaw_chi2 = " << SigmaWChi2 <<std::endl;
+    /*  
+    for(int i=0;i<npar;i++)
+    {
+      std::cout << " par" << i << " = " << parmh[i] << std::endl;
+    }
+    for(int i=0;i<7;i++)
+    {
+
+      std::cout << " sW" << i << " = " << SigmaWInScan[i] << "  +- " << dSigmaWInScan[i] << std::endl;
+    }
+    */
+  }
   if(MinChi2>f)
   {
     MinChi2=f;
