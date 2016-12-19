@@ -349,7 +349,15 @@ int main(int argc, char **argv)
    * первый индекс - номер строчки, второй индекс - номер столбца */
   std::vector< std::vector<double> > AllMH; 
   std::cout << "Reading data from file " << INPUT_FILE << "... ";
-  FillArrayFromFile(INPUT_FILE,dimMHFile, AllMH);  
+  try 
+  {
+    FillArrayFromFile(INPUT_FILE,dimMHFile, AllMH);  
+  }
+  catch(std::runtime_error e)
+  {
+    std::cerr << std::endl << "ERROR: " << e.what() << std::endl;
+    exit(1);
+  }
   std::cout << "read " << AllMH.size() << " points." << std::endl;
   if(opt.count("variate-energy"))
   {
@@ -1154,11 +1162,24 @@ void print_result(std::ostream & os, TMinuit * minuit, string sharp)
   {
     minuit->GetParameter(i, P[i], dP[i]);
   }
-  std::cout << boost::format("--par=\"%5.1f %4.2f %6.3f %4.3f\"") % P[0] % P[1] %P[2] % P[3] << std::endl;
+  os << sharp << boost::format(" --par=\"%5.1f %4.2f %6.3f %4.3f\"") % P[0] % P[1] %P[2] % P[3] << std::endl;
   //double grad=0;
   //double fval=0;
   //int flag=1;
   //minuit->Eval(N, &grad, fval, &P[0], flag);
+
+  //now calculate and print the average SigmaW from CBS
+  ibn::phys_averager sw_aver;
+  //TGraphErrors * g = new TGraphErrors;
+  for( int i=0;i<SigmaWInScan.size();i++)
+  {
+    sw_aver.add(SigmaWInScan[i], dSigmaWInScan[i]);
+    //std::cout << "sw = " << SigmaWInScan[i] <<  " +- " << dSigmaWInScan[i] << std::endl;
+    //g->SetPoint(i, i, SigmaWInScan[i]);
+    //g->SetPointError(i,0, dSigmaWInScan[i]);
+  }
+  //os << sharp  <<  " " << bf( "<Sw> = %5.3f +- %5.3f MeV") %  sw_aver.average() % sw_aver.sigma_average() << std::endl;
+
   int nf = minuit->GetNumFreePars();
   if(FREE_ENERGY_FIT) nf-=EInScan.size();
   int ndf = (NpPP-nf);
@@ -1177,9 +1198,12 @@ void print_result(std::ostream & os, TMinuit * minuit, string sharp)
   os << sharp << " Minuit Mass = "<< bf("%8.3f") % (PDGMASS+P[2]*2.)<<endl;
   os << sharp << " PDG Mass = "   << bf("%8.3f") % PDGMASS <<  endl;
   os << sharp << " " << bf("M-Mpdg = %8.3f +- %5.3f MeV") % (P[2]*2.) %  (dP[2]*2.) << endl;
-  os << sharp << " " << bf("    SW = %5.3f +- %5.3f MeV") % P[3] %  dP[3] << endl;
-  os << sharp << " " << bf("   eps = %5.2f +- %4.2f %%") % (P[1]*100) %  (dP[1]*100) << endl;
-  os << sharp << " " << bf("    bg = %5.2f +- %5.2f nb") % P[0] %  dP[0] << endl;
+  os << sharp << " " << bf("       SW = %5.3f +- %5.3f MeV") % P[3] %  dP[3] << endl;
+  os << sharp << " " << bf(" <SW_CBS> = %5.3f +- %5.3f MeV") %   sw_aver.average() % sw_aver.sigma_average() << endl;
+  os << sharp << " " << bf("      eps = %5.2f +- %4.2f %%") % (P[1]*100) %  (dP[1]*100) << endl;
+  os << sharp << " " << bf("       bg = %5.2f +- %5.2f nb") % P[0] %  dP[0] << endl;
+
+  //g->Fit("pol0");
 }
 
 TF1 * get_result_function(const std::vector<double> & parRes, double Emin, double Emax)

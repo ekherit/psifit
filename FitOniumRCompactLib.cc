@@ -612,8 +612,8 @@ void FillArrayFromFile(std::string fname, int npar, Double_t** Array, int  * npo
   ifstream file(fname);
   if(!file) 
   {
-    std::cerr << "Unable to open file : " << fname << std::endl;
-    return;
+    //std::cerr << "Unable to open file : " << fname << std::endl;
+    throw std::runtime_error("Unable to open file " + fname);
   }
   std::regex comment(" *#.*");
   std::regex empty(" *");
@@ -642,8 +642,9 @@ void FillArrayFromFile(std::string fname, int npar, std::vector< std::vector<dou
   ifstream file(fname);
   if(!file) 
   {
-    std::cerr << "Unable to open file : " << fname << std::endl;
-    return;
+    //std::cerr << "Unable to open file : " << fname << std::endl;
+    throw std::runtime_error("Unable to open file " + fname);
+    //return;
   }
   std::regex comment(" *#.*");
   std::regex empty(" *");
