@@ -245,6 +245,8 @@ void print_cross_section(void)
   }
 }
 
+std::string CFG_TITLE;
+
 int main(int argc, char **argv)
 {
   std::map<std::string, double> fixed_parameters;
@@ -279,6 +281,7 @@ int main(int argc, char **argv)
     ("fix",po::value<std::string>(&fixed_parameters_string), "Fix paremeter: name=<value>[,name2=<value>]...") 
     ("print","Print cross section")
     ("cbs_sigmaw_each_point","Use different cbs energy spread for each energy point")
+    ("title",po::value<std::string>(&CFG_TITLE)->default_value(""), "Add title to canvas with fit result")
     ;
   po::positional_options_description pos;
   pos.add("input",-1);
@@ -1186,13 +1189,13 @@ TF1 * get_result_function(const std::vector<double> & parRes, double Emin, doubl
   {
     case JPSIRES:
       FitPsiP  = new TF1("FitJPsi",FCrSJpsiAzimov,Emin/2.*ScaleEGr,Emax/2.*ScaleEGr,idRNP);
-      FitPsiP->SetTitle("J/#psi");
+      FitPsiP->SetTitle(("J/#psi "+CFG_TITLE).c_str());
       //GrRes->SetTitle("J/#psi scan");
       //mcanvas->SetTitle("J/psi");
       break;
     case PSI2SRES:
       FitPsiP  = new TF1("FitPsiP",FCrSPPrimeAzimov,Emin/2.*ScaleEGr,Emax/2.*ScaleEGr,idRNP);
-      FitPsiP->SetTitle("#psi(2S)");
+      FitPsiP->SetTitle(("#psi(2S) "+CFG_TITLE).c_str());
       //GrRes->SetTitle("#psi(2S) scan");
       //mcanvas->SetTitle("psi(2S)");
       break;
