@@ -177,6 +177,10 @@ std::map<std::string,int> PAR_INDEX;
 int PAR_INDEX_DSIGMA=0;
 double PAR_DM;
 
+double AVERAGE_SIGMAW_CBS;
+double AVERAGE_SIGMAW_CBS_ERROR;
+
+
 enum LuminosityType
 {
   BESLUM, //BES online luminosity monitor
@@ -853,7 +857,8 @@ int main(int argc, char **argv)
   y["chi2"] = yy;
   y["M"]    = yy*0.8;
   y["Sw"]   = yy*0.6;
-  y["P"]    = yy*0.4;
+  y["<SW>"] = yy*0.4;
+  y["P"]    = yy*0.2;
 
   typedef boost::format fmt;
   std::map<std::string, boost::format> format;
@@ -861,6 +866,7 @@ int main(int argc, char **argv)
   format["M"]    = fmt("M - M_{PDG} = %3.3f #pm %3.3f MeV") % (parRes[2]*2.)  % (parErrRes[2]*2.);
   format["Sw"]   = fmt("#sigma_{W} = %1.3f #pm %1.3f MeV") % parRes[3] % parErrRes[3];
   format["P"]    = fmt("P(#chi^{2}) = %3.1f%%") % (TMath::Prob(MinChi2,NpPP-nf)*100);
+  format["<SW>"] = fmt("<#sigma_{W}> = %1.3f #pm %1.3f MeV") %  AVERAGE_SIGMAW_CBS % AVERAGE_SIGMAW_CBS_ERROR;
   std::map<std::string, TLatex> latex;
   for(auto & f : format)
   {
@@ -1032,10 +1038,14 @@ void fcnResMult(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t if
       if(USE_CHI2)
       {
         chisqmh = sq(N - NmhInScan[i])/(NmhInScan[i]*(1. + NmhInScan[i]/nFull)); //just chi square
+        //chisqmh = sq(N - NmhInScan[i])/(NmhInScan[i] + N*N/nFull); //just chi square
       } 
       else chisqmh = 2*(NmhInScan[i]*log(NmhInScan[i]/N) +N - NmhInScan[i]); //likelihood for low statistics
 			SignalDiscrepancy[i] = NmhInScan[i]-N;
+			//SignalDiscrepancy[i] = (NmhInScan[i]-N)/sqrt(NmhInScan[i]*(1. + NmhInScan[i]/nFull));
 			SignalDiscrepancyError[i] = sqrt(NmhInScan[i]*(1. + NmhInScan[i]/nFull));
+			//SignalDiscrepancyError[i] = sqrt(NmhInScan[i]);
+			//SignalDiscrepancyError[i] = 1;
     }
     else if(NmhInScan[i]==0) 
     {
@@ -1179,6 +1189,7 @@ void print_result(std::ostream & os, TMinuit * minuit, string sharp)
     //g->SetPointError(i,0, dSigmaWInScan[i]);
   }
   //os << sharp  <<  " " << bf( "<Sw> = %5.3f +- %5.3f MeV") %  sw_aver.average() % sw_aver.sigma_average() << std::endl;
+  //g->Fit("pol0");
 
   int nf = minuit->GetNumFreePars();
   if(FREE_ENERGY_FIT) nf-=EInScan.size();
@@ -1203,7 +1214,8 @@ void print_result(std::ostream & os, TMinuit * minuit, string sharp)
   os << sharp << " " << bf("      eps = %5.2f +- %4.2f %%") % (P[1]*100) %  (dP[1]*100) << endl;
   os << sharp << " " << bf("       bg = %5.2f +- %5.2f nb") % P[0] %  dP[0] << endl;
 
-  //g->Fit("pol0");
+  AVERAGE_SIGMAW_CBS = sw_aver.average();
+  AVERAGE_SIGMAW_CBS_ERROR = sw_aver.sigma_average();
 }
 
 TF1 * get_result_function(const std::vector<double> & parRes, double Emin, double Emax)
