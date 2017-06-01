@@ -31,18 +31,22 @@
 #define _6part 0.66666666667
 #define _24part 0.0416666667
 //#define _MPsiPrime          3686.090 //PDG-2010
-#define _MPsiPrime          3686.109  //PDG-2012 and PDG-2014
+//#define _MPsiPrime          3686.109  //PDG-2012 and PDG-2014
+#define _MPsiPrime            3686.097  //PDG-2016 +- 25 keV
 //#define _GeePsiPrime        2.38e-3 //average PDG
-#define _GeePsiPrime        2.35e-3   //PDG-2010 and PDG-2014
+//#define _GeePsiPrime        2.35e-3   //PDG-2010 and PDG-2014
+#define _GeePsiPrime         2.34e-3   //MeV PDG-2016 +- 0.04 keV
 //#define _GtotPsiPrime       304e-3  //PDG-2012
-#define _GtotPsiPrime       298e-3    //PDG-2014
+//#define _GtotPsiPrime       298e-3    //PDG-2014
+#define _GtotPsiPrime       296e-3    //PDG-2016 +- 8 kev
 
 //#define _MJPsi              3096.917
-#define _MJPsi              3096.916    //PDG-2012 //PDG-2014
+//#define _MJPsi              3096.916    //PDG-2012 //PDG-2014
+#define _MJPsi              3096.900    //PDG-2016 (with kedr result 2015, error 6 kev)
 //#define _GeeJPsi            5.55e-3   //PDG-2012
 #define _GeeJPsi            5.547059e-3 //PDG-2014
 //#define _GtotJPsi           93.2e-3   //
-#define _GtotJPsi           92.9e-3     //PDG-2012 and PDG-2014
+#define _GtotJPsi           92.9e-3     //PDG-2012 and PDG-2014, PDG-2016
 
 //#define _MTau               1776.69  // KEDR
 #define _MTau               1776.86  //PDG-2014
