@@ -22,10 +22,13 @@
 #include<stdio.h>
 #include<fstream>
 #define HALF_KNOT_COUNT 21
-#define _me       0.510998928
-#define _mmu      105.6583715
+//#define _me       0.510998928
+#define _me       0.5109989461 // PDG-2016 +- 0.0031 eV
+//#define _mmu      105.6583715
+#define _mmu      105.6583745 //PDG-2016 +- 2.4 eV
 #define _ConvConstant      389379323.0e+3 // nb*MeV^2
-#define _alpha 1./137.03599976
+//#define _alpha 1./137.03599976
+#define _alpha 1./137.035999139  //PDG-2016
 #define _3part 0.33333333333
 #define _4part 0.25
 #define _6part 0.66666666667
@@ -35,10 +38,10 @@
 #define _MPsiPrime            3686.097  //PDG-2016 +- 25 keV
 //#define _GeePsiPrime        2.38e-3 //average PDG
 //#define _GeePsiPrime        2.35e-3   //PDG-2010 and PDG-2014
-#define _GeePsiPrime         2.34e-3   //MeV PDG-2016 +- 0.04 keV
+#define _GeePsiPrime        2.34e-3   //MeV PDG-2016 +- 0.04 keV
 //#define _GtotPsiPrime       304e-3  //PDG-2012
 //#define _GtotPsiPrime       298e-3    //PDG-2014
-#define _GtotPsiPrime       296e-3    //PDG-2016 +- 8 kev
+#define _GtotPsiPrime         296e-3    //PDG-2016 +- 8 kev
 
 //#define _MJPsi              3096.917
 //#define _MJPsi              3096.916    //PDG-2012 //PDG-2014
