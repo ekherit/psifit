@@ -193,7 +193,6 @@ int main(int argc, char ** argv)
     //we go to the expected point with the error from previose point
     //E is the real energy
     double  E = R.Gaus(Eset,dE);
-    //E = Eset;
     double sigma = f->Eval(E*2);
     double EXTRA_ERROR=0.00;
     Lpoint = Lpoints[point-1];
