@@ -1,7 +1,7 @@
 all : psifit draw sim
 
-LIBS = `root-config --libs` -lMinuit -L$(HOME)/local/lib  -lboost_program_options
-CXXFLAGS = `root-config --cflags` -I$(HOME)/local/include -I$(HOME)/work/ -std=c++11
+LIBS = `root-config --libs` -lMinuit -L$(HOME)/local/lib  -lboost_program_options -lfmt
+CXXFLAGS = `root-config --cflags` -I$(HOME)/local/include -I$(HOME)/work/   -std=c++14
 
 CC=g++
 

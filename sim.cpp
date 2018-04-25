@@ -19,9 +19,12 @@
 #include <vector>
 #include <iostream>
 #include <chrono>
-using namespace std;
+
+//#include <fmt/printf.h>
+//#include <fmt/ostream.h>
 
 #include <TF1.h>
+using namespace std;
 
 enum ResonanceType
 {
@@ -44,6 +47,7 @@ TF1 * get_result_function(const std::vector<double> & parRes, double Emin, doubl
       //mcanvas->SetTitle("J/psi");
       break;
     case PSI2SRES:
+      std::cerr << "sigma=" << parRes[3] << std::endl;
       FitPsiP  = new TF1("FitPsiP",FCrSPPrimeAzimov,Emin/2.*ScaleEGr,Emax/2.*ScaleEGr,idRNP);
       FitPsiP->SetTitle("#psi(2S) ");
       //GrRes->SetTitle("#psi(2S) scan");
@@ -134,13 +138,15 @@ int main(int argc, char ** argv)
   //vector<double> Epoints = { 1838, 1841.9, 1842.5, 1843.1, 1843.8, 1844.5, 1847};
   //vector<double> Epoints = { 1838, 1841.9, 1842.5, 1843.1, 1843.8, 1844.5, 1847};
   vector<double> Epoints = { 1838, 1841.9, 1842.2, 1842.5, 1843.1, 1843.8,1844.15, 1844.5, 1847};
-  vector<double> dWpoint = { 0.3,     0.1,    0.1,    0.1,    0.1,    0.1,    0.1,    0.1,  0.3};
+  vector<double> dWpoint = { 0.1,     0.1,    0.1,    0.1,    0.1,    0.1,    0.1,    0.1,  0.3};
   vector<double> Lpoints;
   for(auto E : Epoints)
   {
-    std::cout <<  E*2 << "  " <<  E*2-MPSI << "  "  << E-MPSI/2. << endl;
+    std::cerr <<  E*2 << "  " <<  E*2-MPSI << "  "  << E-MPSI/2. << endl;
   }
-  ifstream ifs("scenario.txt");
+  std::string scenario_file="scenario.txt";
+  if(argc=2) scenario_file=argv[1];
+  ifstream ifs(scenario_file);
   int n;
   double E, dE, L;
   Epoints.resize(0);
@@ -150,15 +156,24 @@ int main(int argc, char ** argv)
     Epoints.push_back(E);
     dWpoint.push_back(dE);
     Lpoints.push_back(L);
-    std::cout << n << " " << E << "  " << dE << "  " << L << endl;
+    std::cerr << n << " " << E << "  " << dE << "  " << L << endl;
   }
   for(auto & E: Epoints) { E+=MPSI/2; }
+
 
   std::vector<double> par(idRNP);
   par[idRbg] = 7;
   par[idReff] = 0.60;
   par[idRM] = 0;
   par[idRSw] = 1.324;
+//  fmt::fprintf(std::clog, "Dont %s", "panic");
+  std::clog << "MPSI = " << MPSI << " MeV" << std::endl;
+  std::clog << "sigma_W = " << par[idRSw] << " MeV " << std::endl;
+  std::clog << setw(5) << "PNT" << setw(15) << "E, MeV" << setw(15) << "Wcm, MeV" << setw(15) << "W-Mpsi, MeV" << setw(15)  << "dWcm, MeV" << endl;
+  for(int n=0;n<Epoints.size(); n++)
+  {
+    std::clog << setw(5) << n+1 << setw(15) << Epoints[n] << setw(15) << Epoints[n]*2 << setw(15) <<  Epoints[n]*2-MPSI << setw(15) << dWpoint[n] << endl;
+  }
   for(int i=4;i<idRNP; i++) par[i] = 0;
   //auto f  = get_result_function(par,1540*2,1560*2);
   double MASS = _MPsiPrime;
@@ -178,15 +193,15 @@ int main(int argc, char ** argv)
     //we go to the expected point with the error from previose point
     //E is the real energy
     double  E = R.Gaus(Eset,dE);
+    //E = Eset;
     double sigma = f->Eval(E*2);
-    double EXTRA_ERROR=0.01;
+    double EXTRA_ERROR=0.00;
     Lpoint = Lpoints[point-1];
     unsigned long  Nmh = R.Poisson(sigma*Lpoint)*(1.0+R.Gaus(0,EXTRA_ERROR));
     unsigned long  Ngg = R.Poisson(sigma_gg * Lpoint * pow(E/MASS,-2.))*(1.+R.Gaus(0,EXTRA_ERROR));
     unsigned long  Nee = R.Poisson(sigma_ee * Lpoint * pow(E/MASS,-2.))*(1.+R.Gaus(0,EXTRA_ERROR));
     double dWcbs = dWpoint[point-1];
     double Wcbs = R.Gaus(2*E,dWcbs);
-    Wcbs=2*E;
     g->SetPoint(point-1, Wcbs, Nmh/Lpoint);
     g->SetPointError(point-1, dWcbs, sqrt(Nmh)/Lpoint);
     cout << setw(5) << point 
@@ -202,7 +217,7 @@ int main(int argc, char ** argv)
       << endl;
     ++point;
   }
-  if(argc > 1)
+  if(argc >= 1 && std::string(argv[1])=="--draw")
   {
     TApplication* theApp=new  TApplication("App", &argc, argv);
     g->Draw("a*");
