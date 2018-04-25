@@ -1,4 +1,4 @@
-all : psifit draw
+all : psifit draw sim
 
 LIBS = `root-config --libs` -lMinuit -L$(HOME)/local/lib  -lboost_program_options
 CXXFLAGS = `root-config --cflags` -I$(HOME)/local/include -I$(HOME)/work/ -std=c++11
@@ -17,6 +17,12 @@ draw : FitOniumRCompactLib.o draw.o
 
 FitOniumRCompactLib.o : FitOniumRCompactLib.cc
 		$(CC) -o FitOniumRCompactLib.o $(CXXFLAGS) -c FitOniumRCompactLib.cc
+
+sim : sim.o
+		$(CC) -o $(BINDIR)/psisim FitOniumRCompactLib.o sim.o  $(LIBS)
+
+sim.o : sim.cpp
+		$(CC) -o sim.o  $(CXXFLAGS) -c sim.cpp
 
 
 #interference.o :
