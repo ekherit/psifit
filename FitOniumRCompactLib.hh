@@ -36,6 +36,7 @@
 //#define _MPsiPrime          3686.090 //PDG-2010
 //#define _MPsiPrime          3686.109  //PDG-2012 and PDG-2014
 #define _MPsiPrime            3686.097  //PDG-2016 +- 25 keV
+#define _MPsiPrime            3686.097  //PDG-2018 +- 10 keV
 //#define _GeePsiPrime        2.38e-3 //average PDG
 //#define _GeePsiPrime        2.35e-3   //PDG-2010 and PDG-2014
 #define _GeePsiPrime        2.34e-3   //MeV PDG-2016 +- 0.04 keV

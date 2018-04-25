@@ -251,6 +251,9 @@ void print_cross_section(void)
 
 std::string CFG_TITLE;
 
+double LUM_ERROR_SCALE;
+double MHADR_ERROR_SCALE;
+
 int main(int argc, char **argv)
 {
   std::map<std::string, double> fixed_parameters;
@@ -286,6 +289,8 @@ int main(int argc, char **argv)
     ("print","Print cross section")
     ("cbs_sigmaw_each_point","Use different cbs energy spread for each energy point")
     ("title",po::value<std::string>(&CFG_TITLE)->default_value(""), "Add title to canvas with fit result")
+    ("lum-error-scale",po::value<double>(&LUM_ERROR_SCALE)->default_value(1), "Luminocity error scale")
+    ("mhadr-error-scale",po::value<double>(&MHADR_ERROR_SCALE)->default_value(1), "Multihadron error scale")
     ;
   po::positional_options_description pos;
   pos.add("input",-1);
@@ -580,7 +585,8 @@ int main(int argc, char **argv)
     {
       case BESLUM:
         LumInScan[is]=LumLgammaInScan[is];
-        LumInScanError[is]=Lerror[is];
+        if(Lerror[is]!=0) LumInScanError[is]=Lerror[is];
+        else LumInScanError[is]=sqrt(LumInScan[is])*LUM_ERROR_SCALE;
         NLum[is]=1e100;
         break;
       case NEELUM:
@@ -758,13 +764,24 @@ int main(int argc, char **argv)
 
   //int nep = FREE_ENERGY_FIT==false ? 0 : EInScan.size();
 
-  MinuitRes->mnexcm("MIGRAD", arglistRes,numpar,ierflgRes);
-  MinuitRes->mnimpr();
-  MinuitRes->mnexcm("HESSE", arglistRes,0,ierflgRes);
-  MinuitRes->mnexcm("MINOs 10000000 3 3", arglistRes,0,ierflgRes);
-  // Print results
+  std::cout << "Doing migrad" << std::endl;
+  //MinuitRes->mnexcm("MIGRAD", arglistRes,numpar,ierflgRes);
+  MinuitRes->Migrad();
+
   Double_t aminRes,edmRes,errdefRes;
   Int_t nvparRes,nparxRes,icstatRes;
+  MinuitRes->mnstat(aminRes,edmRes,errdefRes,nvparRes,nparxRes,icstatRes);
+  MinuitRes->mnprin(numpar,aminRes);
+
+  /*  
+  std::cout << "Try to improve minimum" << std::endl;
+  MinuitRes->mnimpr();
+  std::cout << "Do hesse algorithm" << std::endl;
+  MinuitRes->mnexcm("HESSE", arglistRes,0,ierflgRes);
+  std::cout << "MINOS" << std::endl;
+  MinuitRes->mnexcm("MINOs 10000000 3 3", arglistRes,0,ierflgRes);
+  */
+  // Print results
   std::vector<double> parRes(numpar);
   std::vector<double> parErrRes(numpar);
   //Double_t * parRes= new Double_t [numpar] ;
